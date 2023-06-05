@@ -54,8 +54,7 @@ axis_codes = {
 r_btc = {value: key for key, value in button_codes.items()}
 r_atc = {value: key for key, value in axis_codes.items()}
 
-kit.servo[0].set_pulse_width_range(0,10000)
-kit.servo[2].set_pulse_width_range(0,10000)
+kit.servo[0].set_pulse_width_range(500,10000)
 
 class JoyListener:
     def __init__(self):
@@ -68,9 +67,6 @@ class JoyListener:
         self.turning = False
         self.t_out = 0.0
         self.m_out = 0.0
-        self.m_in1 = 0
-        self.m_in2 = 0
-        self.m_inc = 20
 
         # ThrustHeading subscriber form visual serrvoing node
         #self.joy_sub = rospy.Subscriber('/joy', Joy, self.thrustheading_callback)
@@ -147,10 +143,7 @@ class JoyListener:
             #Forward Driving
             if self.drive_req >= 0.5 and self.drive_req < 0.75:
                 #Brake first
-                self.m_in1 = 90
-                self.m_in2 = 0
-                kit.servo[0].angle = 0
-                kit.servo[2].angle = 0
+                poop = 0
                 #motor_pin_a.value = False
                 #motor_pin_b.value = False
             elif self.drive_req >= 0.75 and self.drive_req < 1.0:
@@ -165,31 +158,12 @@ class JoyListener:
                 motor_val = self.m_out
                 motor_val = (motor_val) * 180
                 #print("m_val: ", motor_val, self.m_out)
-                if (self.m_in1 < motor_val):
-                    if (self.m_in1 + self.m_inc >= 180):
-                        self.m_in1 = 180
-                    else:
-                        self.m_in1 += self.m_inc
-                    if (self.m_in1 > motor_val):
-                        self.m_in1 = motor_val
-                elif (self.m_in1 > motor_val):
-                    if (self.m_in1 - self.m_inc <= 0):
-                        self.m_in1 = 0
-                    else:
-                        self.m_in1 -= self.m_inc
-                    if (self.m_in1 < motor_val):
-                        self.m_in1 = motor_val
-                kit.servo[0].angle = self.m_in1
-                kit.servo[2].angle = 0
-                print("m_val1:", motor_val, self.m_in1)
+                kit.servo[0].angle = motor_val
                 print("Driving Forward")
             #Backward Driving
             if self.drive_req <= -0.5 and self.drive_req > -0.75:
                 #Brake first
-                self.m_in1 = 0
-                self.m_in2 = 90
-                kit.servo[0].angle = 0
-                kit.servo[2].angle = 0
+                poop = 0
                 #motor_pin_a.value = False
                 #motor_pin_b.value = False
             elif self.drive_req <= -0.75 and self.drive_req > -1.0:
@@ -203,38 +177,18 @@ class JoyListener:
                 motor_val = self.m_out
                 motor_val = (motor_val) * 180
                 #print("m_val:", motor_val, self.m_out)
-                kit.servo[0].angle = 0
-                if (self.m_in2 < motor_val):
-                    if (self.m_in2 + self.m_inc >= 180):
-                        self.m_in2 = 180
-                    else:
-                        self.m_in2 += self.m_inc
-                    if (self.m_in2 > motor_val):
-                        self.m_in2 = motor_val
-                elif (self.m_in2 > motor_val):
-                    if (self.m_in2 - self.m_inc <= 0):
-                        self.m_in2 = 0
-                    else:
-                        self.m_in2 -= self.m_inc
-                    if (self.m_in2 < motor_val):
-                        self.m_in2 = motor_val
-                kit.servo[2].angle = self.m_in2
-                print("m_val2:", motor_val, self.m_in2)
+                kit.servo[0].angle = motor_val
                 print("Driving Backward")
             #Braking
             if self.braking == True:
                 self.drive_req = 0
                 motor_pin_a.value = False
                 motor_pin_b.value = False
-                kit.servo[0].angle = 0
-                kit.servo[2].angle = 0
                 print("Braking")
             #Idling
             if self.drive_req == 0 and self.braking == False:
                 motor_pin_a.value = True
                 motor_pin_b.value = True
-                kit.servo[0].angle = 0 #self.m_in1
-                kit.servo[2].angle = 0 #self.m_in2
             #rospy.loginfo("Received joy message: %s", str(self.last_joy_message))
             rate.sleep()
 
