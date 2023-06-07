@@ -54,8 +54,8 @@ axis_codes = {
 r_btc = {value: key for key, value in button_codes.items()}
 r_atc = {value: key for key, value in axis_codes.items()}
 
-kit.servo[0].set_pulse_width_range(0,10000)
-kit.servo[2].set_pulse_width_range(0,10000)
+kit.servo[0].set_pulse_width_range(0,17000)
+kit.servo[2].set_pulse_width_range(0,17000)
 
 class JoyListener:
     def __init__(self):
@@ -135,19 +135,19 @@ class JoyListener:
                     servo_val /= 1.5 / 1.5
                 if servo_val > 0:
                     servo_val /= 1.5 / 1.5
-                servo_val = (servo_val + 1) * 45 + 39 #59
+                servo_val = (servo_val + 1) * 45 + 32 #59
                 print(servo_val, self.t_out)
                 kit.servo[1].angle = servo_val
             else:
                 servo_val = 0
-                servo_val = (servo_val + 1) * 45 + 39 #59
+                servo_val = (servo_val + 1) * 45 + 32 #59
                 #print(servo_val, self.t_out)
                 kit.servo[1].angle = servo_val
 
             #Forward Driving
             if self.drive_req >= 0.5 and self.drive_req < 0.75:
                 #Brake first
-                self.m_in1 = 90
+                self.m_in1 = 0
                 self.m_in2 = 0
                 kit.servo[0].angle = 0
                 kit.servo[2].angle = 0
@@ -187,7 +187,7 @@ class JoyListener:
             if self.drive_req <= -0.5 and self.drive_req > -0.75:
                 #Brake first
                 self.m_in1 = 0
-                self.m_in2 = 90
+                self.m_in2 = 0
                 kit.servo[0].angle = 0
                 kit.servo[2].angle = 0
                 #motor_pin_a.value = False
