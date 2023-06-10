@@ -60,9 +60,10 @@ kit.servo[2].set_pulse_width_range(0,17000)
 class JoyListener:
     def __init__(self):
         rospy.init_node('joy_listener', anonymous=True)
-        self.joy_sub = rospy.Subscriber('/joy', Joy, self.joy_callback)
+        self.joy_sub = rospy.Subscriber('/joy', Joy, self.joy_callback, queue_size=1, tcp_nodelay=True)
         self.last_received_time = rospy.Time.now()
         self.last_joy_message = None
+
         self.drive_req = 0.0
         self.braking = False
         self.turning = False
@@ -81,12 +82,22 @@ class JoyListener:
         self.last_joy_message = data
 
     def spin(self):
-        rate = rospy.Rate(10) # 10Hz
+        rate = rospy.Rate(1000) # 10Hz
         while not rospy.is_shutdown():
             # Check if we have received a message in the last 2 seconds
             time_since_last_receive = rospy.Time.now() - self.last_received_time
-            #if time_since_last_receive.to_sec() < 2.0:
-                # Print the last received message
+
+            # Set brake if no received msg recently
+            # print(f'time_since_last_receive = {time_since_last_receive.to_sec()}')
+            if time_since_last_receive.to_sec() > 1.0:
+                # self.last_joy_message.buttons[r_btc["BTN_EAST"]] == 1
+                self.drive_req = 0
+                #motor_pin_a.value = False
+                #motor_pin_b.value = False
+                kit.servo[0].angle = 0
+                kit.servo[2].angle = 0
+                # print("FORCE-Braking NOT")
+
             if self.last_joy_message != None:
                 #Turn Command
                 if abs(self.last_joy_message.axes[r_atc["ABS_X"]]) > 0:
@@ -98,30 +109,30 @@ class JoyListener:
                 #Forward Command
                 if self.last_joy_message.axes[r_atc["ABS_RZ"]] > 0:#7
                     if (self.drive_req == 0 and self.braking == False):
-                        print("Start Forward")
+                        # print("Start Forward")
                         #print(self.drive_req)
                         self.drive_req = 0.5
                     elif (self.drive_req >= 0.5 and self.drive_req < 1.0):
-                        self.drive_req += 0.1
+                        self.drive_req += 0.02
                         #print(self.drive_req)
                     elif (self.drive_req >= 1.0):
                         self.m_out = self.last_joy_message.axes[r_atc["ABS_RZ"]]
                 elif self.drive_req > 0:
-                    print("Stop Forward")
+                    # print("Stop Forward")
                     self.drive_req = 0
                 #Reverse Command
                 if self.last_joy_message.axes[r_atc["ABS_Z"]] > 0:#6
                     if (self.drive_req == 0 and self.braking == False):
-                        print("Start Backward")
+                        # print("Start Backward")
                         #print(self.drive_req)
                         self.drive_req = -0.5
                     elif (self.drive_req <= -0.5 and self.drive_req > -1.0):
-                        self.drive_req -= 0.1
+                        self.drive_req -= 0.02
                         #print(self.drive_req)
                     elif (self.drive_req <= -1.0):
                         self.m_out = self.last_joy_message.axes[r_atc["ABS_Z"]]
                 elif self.drive_req < 0:
-                    print("Stop Backward")
+                    # print("Stop Backward")
                     self.drive_req = 0
                 #Brake Command
                 if self.last_joy_message.buttons[r_btc["BTN_EAST"]] == 1:
@@ -136,7 +147,7 @@ class JoyListener:
                 if servo_val > 0:
                     servo_val /= 1.5 / 1.5
                 servo_val = (servo_val + 1) * 45 + 32 #59
-                print(servo_val, self.t_out)
+                # print(servo_val, self.t_out)
                 kit.servo[1].angle = servo_val
             else:
                 servo_val = 0
@@ -181,8 +192,9 @@ class JoyListener:
                         self.m_in1 = motor_val
                 kit.servo[0].angle = self.m_in1
                 kit.servo[2].angle = 0
-                print("m_val1:", motor_val, self.m_in1)
-                print("Driving Forward")
+                # print("m_val1:", motor_val, self.m_in1)
+                # print("Driving Forward")
+
             #Backward Driving
             if self.drive_req <= -0.5 and self.drive_req > -0.75:
                 #Brake first
@@ -219,8 +231,9 @@ class JoyListener:
                     if (self.m_in2 < motor_val):
                         self.m_in2 = motor_val
                 kit.servo[2].angle = self.m_in2
-                print("m_val2:", motor_val, self.m_in2)
-                print("Driving Backward")
+                # print("m_val2:", motor_val, self.m_in2)
+                # print("Driving Backward")
+
             #Braking
             if self.braking == True:
                 self.drive_req = 0
@@ -228,7 +241,7 @@ class JoyListener:
                 motor_pin_b.value = False
                 kit.servo[0].angle = 0
                 kit.servo[2].angle = 0
-                print("Braking")
+                # print("Braking")
             #Idling
             if self.drive_req == 0 and self.braking == False:
                 motor_pin_a.value = True
@@ -236,8 +249,8 @@ class JoyListener:
                 kit.servo[0].angle = 0 #self.m_in1
                 kit.servo[2].angle = 0 #self.m_in2
             #rospy.loginfo("Received joy message: %s", str(self.last_joy_message))
-            rate.sleep()
 
+            rate.sleep()
 
 if __name__ == '__main__':
     joy_listener = JoyListener()
