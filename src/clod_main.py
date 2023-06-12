@@ -92,7 +92,12 @@ class JoyListener:
         print("Braking")
 
     def spin(self):
+
+        # register shutdown callback
+        rospy.on_shutdown(self.shutdown)
+
         rate = rospy.Rate(1000) # 10Hz
+
         while not rospy.is_shutdown():
             # Check if we have received a message in the last 2 seconds
             time_since_last_receive = rospy.Time.now() - self.last_received_time
@@ -262,8 +267,7 @@ class JoyListener:
 
             rate.sleep()
 
-        # on shutdown, set brakes on
-        rospy.on_shutdown(self.shutdown)
+        rospy.on_shutdown()
 
 if __name__ == '__main__':
     joy_listener = JoyListener()
