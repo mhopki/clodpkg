@@ -81,6 +81,16 @@ class JoyListener:
         self.last_received_time = rospy.Time.now()
         self.last_joy_message = data
 
+    def shutdown(self):
+        # Set brake on shutdown
+        print("Shutting Down")
+        self.drive_req = 0
+        motor_pin_a.value = False
+        motor_pin_b.value = False
+        kit.servo[0].angle = 0
+        kit.servo[2].angle = 0
+        print("Braking")
+
     def spin(self):
         rate = rospy.Rate(1000) # 10Hz
         while not rospy.is_shutdown():
@@ -251,6 +261,9 @@ class JoyListener:
             #rospy.loginfo("Received joy message: %s", str(self.last_joy_message))
 
             rate.sleep()
+
+        # on shutdown, set brakes on
+        rospy.on_shutdown(self.shutdown)
 
 if __name__ == '__main__':
     joy_listener = JoyListener()
