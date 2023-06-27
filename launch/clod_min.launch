@@ -24,24 +24,24 @@
 
     <!-- VISION NODES -->
 	<include file="$(find vision_ctl)/launch/vision_stepup_freq.launch">
-	    <arg name="print_center_yuv" value="false" />
+	    <arg name="print_center_yuv" value="true" />
 
-		<arg name="des_yuv_y" value="40" />
-		<arg name="des_yuv_u" value="160" />
-		<arg name="des_yuv_v" value="110" />
+		<arg name="des_yuv_y" value="30" />
+		<arg name="des_yuv_u" value="145" />
+		<arg name="des_yuv_v" value="115" />
 
-		<arg name="pm_range_yuv_y" value="30" />
+		<arg name="pm_range_yuv_y" value="20" />
 		<arg name="pm_range_yuv_u" value="20" />
 		<arg name="pm_range_yuv_v" value="20" />
     
 		<arg name="desired_blob_center_x" value="0.5" />
 		<arg name="desired_blob_center_y" value="0.5" />
-		<arg name="desired_blob_width" value="0.40" />
+		<arg name="desired_blob_width" value="0.25" />
 
 		<arg name="manual_thrust_clip" value="0.5" />
 		<arg name="window_size" value="200" />
-		<arg name="thrust_scaler" value="0.8" />
-		<arg name="brake_window" value="0.1" />
+		<arg name="thrust_scaler" value="1.0" />
+		<arg name="brake_window" value="0.2" />
     </include>
 
 </launch>
