@@ -54,8 +54,16 @@ axis_codes = {
 r_btc = {value: key for key, value in button_codes.items()}
 r_atc = {value: key for key, value in axis_codes.items()}
 
+#Wheel pin voltage control
 kit.servo[0].set_pulse_width_range(0,17000)
 kit.servo[2].set_pulse_width_range(0,17000)
+
+#Servo pin voltage pwm control
+kit.servo[1].set_pulse_width_range(2000,5000)
+kit.servo[3].set_pulse_width_range(2000,5000)
+
+kit.servo[1].actuation_range = 180
+kit.servo[3].actuation_range = 180
 
 class JoyListener:
     def __init__(self):
@@ -67,7 +75,9 @@ class JoyListener:
         self.drive_req = 0.0
         self.braking = False
         self.turning = False
+        self.turning2 = False
         self.t_out = 0.0
+        self.t_out2 = 0.0
         self.m_out = 0.0
         self.m_in1 = 0
         self.m_in2 = 0
@@ -99,14 +109,25 @@ class JoyListener:
                 # print("FORCE-Braking NOT")
 
             if self.last_joy_message != None:
-                #Turn Command
-                if abs(self.last_joy_message.axes[r_atc["ABS_X"]]) > 0:
+                #Front Wheel Turn Command
+                if abs(self.last_joy_message.axes[r_atc["ABS_X"]]) > 0.1:
                     self.turning = True
                     self.t_out = self.last_joy_message.axes[r_atc["ABS_X"]]
                     #print("Turning")
                 elif self.turning == True:
                     self.turning = False
-                #Forward Command
+                    #print("Not Turning")
+                
+                #Rear Wheel Turn Command
+                if abs(self.last_joy_message.axes[r_atc["ABS_RX"]]) > 0.1:
+                    self.turning2 = True
+                    self.t_out2 = self.last_joy_message.axes[r_atc["ABS_RX"]]
+                    #print("Turning2")
+                elif self.turning2 == True:
+                    self.turning2 = False
+                    #print("Not Turning2")
+
+                #Forward Drive Command
                 if self.last_joy_message.axes[r_atc["ABS_RZ"]] > 0:#7
                     if (self.drive_req == 0 and self.braking == False):
                         # print("Start Forward")
@@ -120,7 +141,8 @@ class JoyListener:
                 elif self.drive_req > 0:
                     # print("Stop Forward")
                     self.drive_req = 0
-                #Reverse Command
+
+                #Reverse Drive Command
                 if self.last_joy_message.axes[r_atc["ABS_Z"]] > 0:#6
                     if (self.drive_req == 0 and self.braking == False):
                         # print("Start Backward")
@@ -134,30 +156,53 @@ class JoyListener:
                 elif self.drive_req < 0:
                     # print("Stop Backward")
                     self.drive_req = 0
+
                 #Brake Command
                 if self.last_joy_message.buttons[r_btc["BTN_EAST"]] == 1:
                     self.braking = True
                 elif self.braking == True:
                     self.braking = False
             
+            #Front Wheels Turning State
             if self.turning == True:
                 servo_val = self.t_out
                 if servo_val < 0:
-                    servo_val /= 1.5 / 1.5
+                    servo_val = servo_val #/= 1.5 / 1.5
                 if servo_val > 0:
-                    servo_val /= 1.5 / 1.5
-                servo_val = (servo_val + 1) * 45 + 32 #59
-                # print(servo_val, self.t_out)
+                    servo_val = servo_val #/= 1.5 / 1.5
+                servo_val = (servo_val + 1) * 13 # * 45 + 22 #59
+                #print(servo_val, self.t_out, " t ", self.turning)
                 kit.servo[1].angle = servo_val
             else:
-                servo_val = 0
-                servo_val = (servo_val + 1) * 45 + 32 #59
-                #print(servo_val, self.t_out)
+                servo_val = self.t_out #0
+                servo_val = (servo_val + 1) * 10 #45 + 22 #59
+                
+                servo_val = 18 #hard coded straight wheel angle
+                #print(servo_val, self.t_out, " nt ", self.turning)
                 kit.servo[1].angle = servo_val
 
-            #Forward Driving
+            #Rear Wheels Turning State
+            if self.turning2 == True:
+                servo_val = self.t_out2
+                if servo_val < 0:
+                    servo_val = servo_val #/= 1.5 / 1.5
+                if servo_val > 0:
+                    servo_val = servo_val #/= 1.5 / 1.5
+                servo_val = (servo_val + 1) * 13 # * 45 + 22 #59
+                #print(servo_val, self.t_out2, " t ", self.turning2)
+                kit.servo[3].angle = servo_val
+            else:
+                servo_val = self.t_out2 #0
+                servo_val = (servo_val + 1) * 10 #45 + 22 #59
+
+                servo_val = 15 #hard coded straight wheel angle
+                #print(servo_val, self.t_out2, " nt ", self.turning2)
+                kit.servo[3].angle = servo_val
+
+
+            #Forward Driving State
             if self.drive_req >= 0.5 and self.drive_req < 0.75:
-                #Brake first
+                #Brake first for a short time
                 self.m_in1 = 0
                 self.m_in2 = 0
                 kit.servo[0].angle = 0
@@ -165,7 +210,7 @@ class JoyListener:
                 #motor_pin_a.value = False
                 #motor_pin_b.value = False
             elif self.drive_req >= 0.75 and self.drive_req < 1.0:
-                #Idle mid
+                #Idle for a short time
                 motor_pin_a.value = True
                 motor_pin_b.value = True
             elif self.drive_req >= 1.0:
@@ -197,7 +242,7 @@ class JoyListener:
 
             #Backward Driving
             if self.drive_req <= -0.5 and self.drive_req > -0.75:
-                #Brake first
+                #Brake first for a short time
                 self.m_in1 = 0
                 self.m_in2 = 0
                 kit.servo[0].angle = 0
@@ -205,10 +250,11 @@ class JoyListener:
                 #motor_pin_a.value = False
                 #motor_pin_b.value = False
             elif self.drive_req <= -0.75 and self.drive_req > -1.0:
-                #Idle mid
+                #Idle for a short time
                 motor_pin_a.value = True
                 motor_pin_b.value = True
             elif self.drive_req <= -1.0:
+                #Now Drive
                 motor_pin_a.value = False
                 motor_pin_b.value = True
 
@@ -234,7 +280,7 @@ class JoyListener:
                 # print("m_val2:", motor_val, self.m_in2)
                 # print("Driving Backward")
 
-            #Braking
+            #Braking State
             if self.braking == True:
                 self.drive_req = 0
                 motor_pin_a.value = False
@@ -242,7 +288,8 @@ class JoyListener:
                 kit.servo[0].angle = 0
                 kit.servo[2].angle = 0
                 # print("Braking")
-            #Idling
+
+            #Idling State
             if self.drive_req == 0 and self.braking == False:
                 motor_pin_a.value = True
                 motor_pin_b.value = True
