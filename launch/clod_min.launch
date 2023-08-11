@@ -1,0 +1,47 @@
+<launch>
+    <param name="use_sim_time" value="False" />
+
+    <!-- MAIN CLOD MOTOR CONTROL NODE -->
+	<node pkg="clod_pkg" type="clod_main.py" name="node_main" output="screen"/>
+
+    <!-- CAMERA    -->
+    <include file="$(find spinnaker_camera_driver)/launch/camera.launch">
+        <arg name="camera_name" value="camera" />
+        <arg name="camera_serial" value="0" />
+        <arg name="calibrated" value="0" />
+        <arg name="device_type" value="USB3" /> <!-- USB3 or GigE -->
+
+        <arg name="control_frame_rate" value="True" />
+        <arg name="frame_rate" value="30" />
+
+        <arg name="isp_enable" value="False" /> 
+        <arg name="encoding" value="BayerRG8" />
+        <arg name="color_balance" value="Continuous" />
+    </include>
+
+    <!-- JOYSTICK NODE -->
+    <!-- <node pkg="clod_pkg" type="joy_pub.py" name="node_joy" output="screen"/> -->
+
+    <!-- VISION NODES -->
+	<include file="$(find vision_ctl)/launch/vision_stepup_freq.launch">
+	    <arg name="print_center_yuv" value="true" />
+
+		<arg name="des_yuv_y" value="30" />
+		<arg name="des_yuv_u" value="145" />
+		<arg name="des_yuv_v" value="115" />
+
+		<arg name="pm_range_yuv_y" value="20" />
+		<arg name="pm_range_yuv_u" value="20" />
+		<arg name="pm_range_yuv_v" value="20" />
+    
+		<arg name="desired_blob_center_x" value="0.5" />
+		<arg name="desired_blob_center_y" value="0.5" />
+		<arg name="desired_blob_width" value="0.25" />
+
+		<arg name="manual_thrust_clip" value="0.5" />
+		<arg name="window_size" value="200" />
+		<arg name="thrust_scaler" value="1.0" />
+		<arg name="brake_window" value="0.2" />
+    </include>
+
+</launch>
