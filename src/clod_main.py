@@ -59,11 +59,19 @@ kit.servo[0].set_pulse_width_range(0,17000)
 kit.servo[2].set_pulse_width_range(0,17000)
 
 #Servo pin voltage pwm control
-kit.servo[1].set_pulse_width_range(2000,5000)
-kit.servo[3].set_pulse_width_range(2000,5000)
+kit.servo[1].set_pulse_width_range(1000,2000)
+kit.servo[3].set_pulse_width_range(1000,2000)
 
 kit.servo[1].actuation_range = 180
 kit.servo[3].actuation_range = 180
+
+#turning cam
+kit.servo[4].set_pulse_width_range(500,2500)
+kit.servo[5].set_pulse_width_range(500,2500)
+
+kit.servo[4].actuation_range = 180
+kit.servo[5].actuation_range = 180
+
 
 class JoyListener:
     def __init__(self):
@@ -82,6 +90,12 @@ class JoyListener:
         self.m_in1 = 0
         self.m_in2 = 0
         self.m_inc = 20
+        self.cy_out = 0
+        self.cp_out = 0
+        self.cam_yaw = False
+        self.cam_pitch = False
+        self.cy_pos = 90
+        self.cp_pos = 0
 
         # ThrustHeading subscriber form visual serrvoing node
         #self.joy_sub = rospy.Subscriber('/joy', Joy, self.thrustheading_callback)
@@ -117,7 +131,7 @@ class JoyListener:
                 elif self.turning == True:
                     self.turning = False
                     #print("Not Turning")
-                
+
                 #Rear Wheel Turn Command
                 if abs(self.last_joy_message.axes[r_atc["ABS_RX"]]) > 0.1:
                     self.turning2 = True
@@ -162,22 +176,39 @@ class JoyListener:
                     self.braking = True
                 elif self.braking == True:
                     self.braking = False
-            
+
+		#Yaw Cam Command
+                if abs(self.last_joy_message.axes[r_atc["ABS_HAT0X"]]) > 0:
+                    self.cam_yaw = True
+                    self.cy_out = self.last_joy_message.axes[r_atc["ABS_HAT0X"]]
+                    print("attempt ", self.cy_out)
+                elif self.cam_yaw == True:
+                    self.cam_yaw = False
+
+                #Pitch Cam Command
+                if abs(self.last_joy_message.axes[r_atc["ABS_HAT0Y"]]) > 0:
+                    self.cam_pitch = True
+                    self.cp_out = self.last_joy_message.axes[r_atc["ABS_HAT0Y"]]
+                    print("attempt ", self.cp_out)
+                elif self.cam_pitch == True:
+                    self.cam_pitch = False
+
+
             #Front Wheels Turning State
             if self.turning == True:
                 servo_val = self.t_out
                 if servo_val < 0:
                     servo_val = servo_val #/= 1.5 / 1.5
                 if servo_val > 0:
-                    servo_val = servo_val #/= 1.5 / 1.5
-                servo_val = (servo_val + 1) * 13 # * 45 + 22 #59
-                #print(servo_val, self.t_out, " t ", self.turning)
+                    servo_val = servo_val * 1.2 #/= 1.5 / 1.5
+                servo_val = (servo_val + 1) * 40 # * 45 + 22 #59
+                print(servo_val, self.t_out, " t ", self.turning, self.t_out*1.1)
                 kit.servo[1].angle = servo_val
             else:
-                servo_val = self.t_out #0
-                servo_val = (servo_val + 1) * 10 #45 + 22 #59
+                servo_val = 0 #self.t_out #0
+                servo_val = (servo_val + 1) * 40 #45 + 22 #59
                 
-                servo_val = 18 #hard coded straight wheel angle
+                #servo_val = 0 #18 #hard coded straight wheel angle
                 #print(servo_val, self.t_out, " nt ", self.turning)
                 kit.servo[1].angle = servo_val
 
@@ -188,14 +219,14 @@ class JoyListener:
                     servo_val = servo_val #/= 1.5 / 1.5
                 if servo_val > 0:
                     servo_val = servo_val #/= 1.5 / 1.5
-                servo_val = (servo_val + 1) * 13 # * 45 + 22 #59
+                servo_val = (servo_val + 1) * 40 # * 45 + 22 #59
                 #print(servo_val, self.t_out2, " t ", self.turning2)
                 kit.servo[3].angle = servo_val
             else:
-                servo_val = self.t_out2 #0
-                servo_val = (servo_val + 1) * 10 #45 + 22 #59
+                servo_val = 0 #self.t_out2 #0
+                servo_val = (servo_val + 1) * 40 #45 + 22 #59
 
-                servo_val = 15 #hard coded straight wheel angle
+                #servo_val = 0 #15 #hard coded straight wheel angle
                 #print(servo_val, self.t_out2, " nt ", self.turning2)
                 kit.servo[3].angle = servo_val
 
@@ -296,6 +327,27 @@ class JoyListener:
                 kit.servo[0].angle = 0 #self.m_in1
                 kit.servo[2].angle = 0 #self.m_in2
             #rospy.loginfo("Received joy message: %s", str(self.last_joy_message))
+
+            #Cam Yaw State
+            if self.cam_yaw == True:
+                proj_ang = self.cy_pos - self.cy_out
+                print("proj_ang: ", proj_ang, self.cy_out)
+                #120 accounts for it, 170 is blocked by servo size
+                if (proj_ang < 170 and proj_ang > 0):
+                    kit.servo[4].angle = proj_ang
+                    self.cy_pos = proj_ang
+                    print("Yaw, ", self.cy_pos, proj_ang)
+
+            #Cam Pitch State
+            if self.cam_pitch == True:
+                proj_ang = self.cp_pos + self.cp_out
+                print("proj_ang: ", proj_ang, self.cp_out)
+                #160 fully reversed, maybe 55 for not?
+                if (proj_ang < 160 and proj_ang > 0):
+                    kit.servo[5].angle = proj_ang
+                    self.cp_pos = proj_ang
+                    print("Pitch, ", self.cp_pos, proj_ang)
+
 
             rate.sleep()
 

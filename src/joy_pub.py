@@ -69,6 +69,7 @@ while not rospy.is_shutdown():
         		joy_msg.axes[axs_idx] = event.state / 255.0
         	else:
         		joy_msg.axes[axs_idx] = event.state
+       			print("Event Output: ", event.state)
 
     # Publish the Joy message
     joy_pub.publish(joy_msg)
