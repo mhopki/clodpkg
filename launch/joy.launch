@@ -1,0 +1,4 @@
+<launch>
+    <param name="use_sim_time" value="False" />
+    <node pkg="clod_pkg" type="joy_pub.py" name="node_joy" output="screen"/>
+</launch>
