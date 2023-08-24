@@ -181,7 +181,7 @@ class JoyListener:
                 if abs(self.last_joy_message.axes[r_atc["ABS_HAT0X"]]) > 0:
                     self.cam_yaw = True
                     self.cy_out = self.last_joy_message.axes[r_atc["ABS_HAT0X"]]
-                    print("attempt ", self.cy_out)
+                    #print("attempt ", self.cy_out)
                 elif self.cam_yaw == True:
                     self.cam_yaw = False
 
@@ -189,7 +189,7 @@ class JoyListener:
                 if abs(self.last_joy_message.axes[r_atc["ABS_HAT0Y"]]) > 0:
                     self.cam_pitch = True
                     self.cp_out = self.last_joy_message.axes[r_atc["ABS_HAT0Y"]]
-                    print("attempt ", self.cp_out)
+                    #print("attempt ", self.cp_out)
                 elif self.cam_pitch == True:
                     self.cam_pitch = False
 
@@ -197,12 +197,13 @@ class JoyListener:
             #Front Wheels Turning State
             if self.turning == True:
                 servo_val = self.t_out
+                offset = 10
                 if servo_val < 0:
                     servo_val = servo_val #/= 1.5 / 1.5
                 if servo_val > 0:
-                    servo_val = servo_val * 1.2 #/= 1.5 / 1.5
-                servo_val = (servo_val + 1) * 40 # * 45 + 22 #59
-                print(servo_val, self.t_out, " t ", self.turning, self.t_out*1.1)
+                    servo_val = servo_val #/= 1.5 / 1.5
+                servo_val = (servo_val + 1) * (40 + offset)  # * 45 + 22 #59
+                #print(servo_val, self.t_out, " t ", self.turning, self.t_out*1.1)
                 kit.servo[1].angle = servo_val
             else:
                 servo_val = 0 #self.t_out #0
@@ -210,6 +211,7 @@ class JoyListener:
                 
                 #servo_val = 0 #18 #hard coded straight wheel angle
                 #print(servo_val, self.t_out, " nt ", self.turning)
+                #print("front: ", servo_val)
                 kit.servo[1].angle = servo_val
 
             #Rear Wheels Turning State
@@ -228,6 +230,7 @@ class JoyListener:
 
                 #servo_val = 0 #15 #hard coded straight wheel angle
                 #print(servo_val, self.t_out2, " nt ", self.turning2)
+                #print("rear: ", servo_val)
                 kit.servo[3].angle = servo_val
 
 
@@ -331,22 +334,22 @@ class JoyListener:
             #Cam Yaw State
             if self.cam_yaw == True:
                 proj_ang = self.cy_pos - self.cy_out
-                print("proj_ang: ", proj_ang, self.cy_out)
+                #print("proj_ang: ", proj_ang, self.cy_out)
                 #120 accounts for it, 170 is blocked by servo size
                 if (proj_ang < 170 and proj_ang > 0):
                     kit.servo[4].angle = proj_ang
                     self.cy_pos = proj_ang
-                    print("Yaw, ", self.cy_pos, proj_ang)
+                    #print("Yaw, ", self.cy_pos, proj_ang)
 
             #Cam Pitch State
             if self.cam_pitch == True:
                 proj_ang = self.cp_pos + self.cp_out
-                print("proj_ang: ", proj_ang, self.cp_out)
+                #print("proj_ang: ", proj_ang, self.cp_out)
                 #160 fully reversed, maybe 55 for not?
                 if (proj_ang < 160 and proj_ang > 0):
                     kit.servo[5].angle = proj_ang
                     self.cp_pos = proj_ang
-                    print("Pitch, ", self.cp_pos, proj_ang)
+                    #print("Pitch, ", self.cp_pos, proj_ang)
 
 
             rate.sleep()
