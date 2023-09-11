@@ -47,7 +47,8 @@ class POCont:
 	def __init__(self):
 		rospy.init_node('po_controller', anonymous=True)
 		self.joy_pub = rospy.Publisher('/joy', Joy, queue_size=100)
-		self.odom_sub = rospy.Subscriber('/vicon/BEAST/odom', Odometry, self.odom_callback, queue_size=1, tcp_nodelay=True)
+		#self.odom_sub = rospy.Subscriber('/vicon/BEAST/odom', Odometry, self.odom_callback, queue_size=1, tcp_nodelay=True)
+		self.odom_sub = rospy.Subscriber('/camera/odom/sample', Odometry, self.odom_callback_cam, queue_size=1, tcp_nodelay=True)
 		self.waypoint_sub = rospy.Subscriber('/waypoints', PoseStamped, self.waypoint_callback)
 		#pose_sub = rospy.Subscriber('/vicon/BEAST/pose', PoseStamped, pose_callback, queue_size=1, tcp_nodelay=True)
 		self.last_received_time = rospy.Time.now()
@@ -71,7 +72,8 @@ class POCont:
 		self.waypoints = []
 
 		self.r_pos = [0.0, 0.0]
-		self.r_theta = 0.0
+		self.r_theta = -100.0
+		self.prev_theta = -100.0
 
 		self.des_twist = [0, 0, 0, 0, 0, 0]
 		self.hcommit = 1000
@@ -88,11 +90,29 @@ class POCont:
 	    #print("pose: ", data.pose.pose)
 	    #print("twist: ", data.twist.twist)
 	    self.r_pos = [data.pose.pose.position.x, data.pose.pose.position.y]
-	    self.r_theta = data.pose.pose.orientation.z
+	    if self.r_theta == -100.0:
+	    	self.r_theta = data.pose.pose.orientation.z
+	    	self.prev_theta = self.r_theta
 	    self.r_twist = [data.twist.twist.linear.y, data.twist.twist.angular.z]
 	    self.r_odom = data
 	    #print(self.r_odom)
 	    #print(data.pose.pose.position.x)
+	    #print(self.r_odom.pose.pose.orientation.z, self.r_odom.twist.twist.angular.z, self.r_theta)
+
+	def odom_callback_cam(self, data):
+	    # Your processing code here
+	    # This function will be called whenever a new message is received
+	    #print("pose: ", data.pose.pose)
+	    #print("twist: ", data.twist.twist)
+	    self.r_pos = [data.pose.pose.position.x, data.pose.pose.position.y]
+	    if self.r_theta == -100.0:
+	    	self.r_theta = data.pose.pose.orientation.z
+	    	self.prev_theta = self.r_theta
+	    self.r_twist = [data.twist.twist.linear.x, data.twist.twist.angular.z]
+	    self.r_odom = data
+	    #print(self.r_odom)
+	    #print(data.pose.pose.position.x)
+	    #print(self.r_odom.pose.pose.orientation.z, self.r_odom.twist.twist.angular.z, self.r_theta)
 
 	def waypoint_callback(self, data):
 	    # Your processing code here
@@ -108,6 +128,34 @@ class POCont:
 	    # This function will be called whenever a new message is received
 	    #print("pose:", data)
 	    x = 0
+
+	def set_rtheta(self):
+		if abs(self.r_theta) < 99:
+			des_t = abs(self.r_odom.pose.pose.orientation.z)
+			if self.r_odom.twist.twist.angular.z > 0.05:
+				if self.prev_theta > des_t:
+					self.prev_theta = des_t
+					self.r_theta = -des_t
+					#print("neg side")
+				elif self.prev_theta < des_t:
+					self.prev_theta = des_t
+					self.r_theta = des_t
+					#print("pos side")
+			elif self.r_odom.twist.twist.angular.z < -0.05:
+				if self.prev_theta > des_t:
+					self.prev_theta = des_t
+					self.r_theta = des_t
+					#print("pos side")
+				elif self.prev_theta < des_t:
+					self.prev_theta = des_t
+					self.r_theta = -des_t
+					#print("neg side")
+			#self.r_theta += self.r_odom.twist.twist.angular.z
+			#if self.r_theta < -1:
+			#	self.r_theta = 1
+			#if self.r_theta > 1:
+			#	self.r_theta = -1
+
 
 	def straighten(self, des_or):
 	    # Your processing code here
@@ -151,7 +199,7 @@ class POCont:
 	    dy = waypoint_pose.pose.pose.position.y - current_pose.pose.pose.position.y
 	    
 	    # Calculate the desired heading angle using arctangent (atan2)
-	    desired_heading = -math.atan2(dx, dy)
+	    desired_heading = math.atan2(dy, dx)#-math.atan2(dx, dy)
 
 	    # Normalize the desired heading to the range of 0 to 2π
 	    # Normalize the desired heading to the range of -π to π
@@ -168,7 +216,7 @@ class POCont:
 	    
 	    # Calculate the difference between current and desired heading
 	    heading_error = desired_heading - (current_pose.pose.pose.orientation.z * math.pi)
-	    if (self.hcommit >= 1000):#10000
+	    if (self.hcommit >= 10):#10000
 	    	if heading_error > math.pi:
 	    		heading_error -= 2 * math.pi
 	    		self.comside = 1
@@ -224,6 +272,7 @@ class POCont:
 		# Publish the Joy message repeatedly
 		while not rospy.is_shutdown():
 			time_since_last_receive = rospy.Time.now() - self.last_received_time
+			self.set_rtheta()
 			#print("time_gap: ", time_since_last_receive)
 
 			if time_since_last_receive.to_sec() > 1.0 and time_since_last_receive.to_sec() < 2.0:
@@ -233,19 +282,25 @@ class POCont:
 				self.joy_msg.axes = [0.0] * 8
 				self.joy_msg.buttons = [0] * 12
 				#print("timeout")
+				x = 0
 
-			if (self.r_pos[0] < -3.0 or self.r_pos[0] > 3.0 or self.r_pos[1] > 9 or self.r_pos[1] < 0.5):
+			if (self.r_pos[0] < -9.0 or self.r_pos[0] > 9.0 or self.r_pos[1] > 9 or self.r_pos[1] < -2.0):
+				#-3.0, 3.0, 9, 0.5
 				#OUTTA BOUNDS!!!
 				self.joy_msg = Joy()
 				self.joy_msg.axes = [0.0] * 8
 				self.joy_msg.buttons = [0] * 12
-				#print("OB")
+				print("OB")
+				x = 0
 			elif ((abs(self.r_pos[0] - self.g_loc[0]) > self.g_thres or abs(self.r_pos[1] - self.g_loc[1]) > self.g_thres) and self.g_met == False and self.g_loc[0] != -10):
 				#WE ON GO
-				lingain = 1.5#1.5
-				anggain = 8.0#5.0#3.0
+				lingain = 3.0 * 6#3.0#1.5
+				anggain = 8.0 * 20#8.0#5.0#3.0
 				dist = self.calculate_distance(self.r_pos[0], self.r_pos[1], self.g_loc[0], self.g_loc[1])
-				lin, ang = self.calculate_desired_cmd(self.r_odom, self.g_odom, lingain, anggain)
+				fixed_odom = self.r_odom
+				fixed_odom.pose.pose.orientation.z = self.r_theta
+				lin, ang = self.calculate_desired_cmd(fixed_odom, self.g_odom, lingain, anggain)
+				#print("outs:", lin, ang)
 
 				if lin > 0.4:
 					lin = 0.4
@@ -259,6 +314,9 @@ class POCont:
 					print(dist)
 
 				lin_out = lin # + 0.2
+				if lin_out < 0.2:
+					lin_out = 0.2
+				lin_out = 0.5
 				ang_out_f = -((ang / 2) + 0.025)*4
 				if ang_out_f > 1.0:
 					ang_out_f = 1.0
@@ -341,6 +399,7 @@ class POCont:
 
 			# Publish the Joy message
 			if (time_since_last_receive.to_sec() < 2.0):
+				x = 0
 				self.joy_pub.publish(self.joy_msg)
 			#print(joy_msg)
 
