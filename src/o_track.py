@@ -74,6 +74,7 @@ class POCont:
 		self.r_pos = [0.0, 0.0]
 		self.r_theta = -100.0
 		self.prev_theta = -100.0
+		self.r_theta_cam = [90,0]
 
 		self.des_twist = [0, 0, 0, 0, 0, 0]
 		self.hcommit = 1000
@@ -129,8 +130,56 @@ class POCont:
 	    #print("pose:", data)
 	    x = 0
 
+	def cam_orient(self, current_pose, ox, oy, kpx, kpy):
+	    dx = ox - current_pose.pose.pose.position.x
+	    dy = oy - current_pose.pose.pose.position.y
+	    desired_heading = math.atan2(dy, -dx) - (math.pi*0.5)
+
+	    cur_or = current_pose.pose.pose.orientation.z 
+	    if cur_or < 0:
+	    	xx = 0
+	    	#also alter the z direction
+
+	    heading_error_gen = desired_heading - (cur_or * math.pi) - (math.radians(180))
+	    heading_error = desired_heading - (cur_or * math.pi) - (math.radians(self.r_theta_cam[0]))
+	    #print("ORIG cam_error: ", heading_error, heading_error_gen)
+	    if (True):#10000
+	    	if heading_error > math.pi:
+	    		heading_error -= 2 * math.pi
+	    	elif heading_error < -math.pi:
+	    		heading_error += 2 * math.pi
+
+	    if (True):#10000
+	    	if heading_error_gen > math.pi:
+	    		heading_error_gen -= 2 * math.pi
+	    	if heading_error_gen < -math.pi:
+	    		heading_error_gen += 2 * math.pi
+	    if (True):#10000
+	    	if heading_error_gen > math.pi:
+	    		heading_error_gen -= 2 * math.pi
+	    	if heading_error_gen < -math.pi:
+	    		heading_error_gen += 2 * math.pi
+	    
+	    heading_error = -heading_error
+	    heading_error_gen = -heading_error_gen
+	    print("cam_error: ", heading_error, heading_error_gen)
+	    cex = ((kpx * heading_error)/math.pi + 3.0)
+	    if (1.0 - (heading_error_gen / math.pi) > 0 and 1.0 - (heading_error_gen / math.pi) <= 1.0):
+	    	truecx = 3.0 - (heading_error_gen / math.pi)
+	    else:
+	    	truecx = 3.0 - (1.0 + (heading_error_gen / math.pi))
+	    cey = ((kpy * 0)/math.pi + 3.0)
+	    #truecx = (cex - 3.0)
+	    if heading_error_gen > 0:
+	    	truecy = 2.0
+	    else:
+	    	truecy = 2.0
+	    print("cmds: ", cex, cey)
+	    print("cmds_true: ", truecx, truecy)
+	    return truecx, truecy
+
 	def set_rtheta(self):
-		if abs(self.r_theta) < 99:
+		if abs(self.r_theta) < 99: #robot itself
 			des_t = abs(self.r_odom.pose.pose.orientation.z)
 			if self.r_odom.twist.twist.angular.z > 0.05:
 				if self.prev_theta > des_t:
@@ -273,6 +322,12 @@ class POCont:
 		while not rospy.is_shutdown():
 			time_since_last_receive = rospy.Time.now() - self.last_received_time
 			self.set_rtheta()
+			fixed_odom = self.r_odom
+			fixed_odom.pose.pose.orientation.z = self.r_theta
+			lingain = 3.0 * 6#3.0#1.5
+			anggain = 8.0 * 20#8.0#5.0#3.0
+			kpx = 1.0
+			kpy = 1.0
 			#print("time_gap: ", time_since_last_receive)
 
 			if time_since_last_receive.to_sec() > 1.0 and time_since_last_receive.to_sec() < 2.0:
@@ -294,12 +349,11 @@ class POCont:
 				x = 0
 			elif ((abs(self.r_pos[0] - self.g_loc[0]) > self.g_thres or abs(self.r_pos[1] - self.g_loc[1]) > self.g_thres) and self.g_met == False and self.g_loc[0] != -10):
 				#WE ON GO
-				lingain = 3.0 * 6#3.0#1.5
-				anggain = 8.0 * 20#8.0#5.0#3.0
 				dist = self.calculate_distance(self.r_pos[0], self.r_pos[1], self.g_loc[0], self.g_loc[1])
-				fixed_odom = self.r_odom
-				fixed_odom.pose.pose.orientation.z = self.r_theta
+				#fixed_odom = self.r_odom
+				#fixed_odom.pose.pose.orientation.z = self.r_theta
 				lin, ang = self.calculate_desired_cmd(fixed_odom, self.g_odom, lingain, anggain)
+				cam_dir = self.cam_orient(fixed_odom, 5, 0)
 				#print("outs:", lin, ang)
 
 				if lin > 0.4:
@@ -329,7 +383,7 @@ class POCont:
 					ang_out_r = -1.0
 
 				self.last_received_time = rospy.Time.now()
-				self.joy_msg.axes[r_atc["ABS_RZ"]] = lin_out
+				#self.joy_msg.axes[r_atc["ABS_RZ"]] = lin_out
 				self.joy_msg.axes[r_atc["ABS_X"]] = ang_out_f
 				self.joy_msg.axes[r_atc["ABS_RX"]] = -ang_out_r
 				"""
@@ -392,10 +446,16 @@ class POCont:
 			else:
 				x = 0
 				print("wtf")
+				camx, camy = self.cam_orient(fixed_odom, 5, 0, kpx, kpy)
+				print("cur_pos: ", self.r_theta)
 				if len(self.waypoints) > 0:
 					self.g_loc[0] = self.r_pos[0]
 					self.g_loc[1] = self.r_pos[1]
 				#print("WTF", self.r_pos, self.g_loc)
+				self.last_received_time = rospy.Time.now()
+				#self.joy_msg.axes[r_atc["ABS_RZ"]] = lin_out
+				self.joy_msg.axes[r_atc["ABS_HAT0X"]] = 2.0
+				#self.joy_msg.axes[r_atc["ABS_HAT0Y"]] = 0
 
 			# Publish the Joy message
 			if (time_since_last_receive.to_sec() < 2.0):

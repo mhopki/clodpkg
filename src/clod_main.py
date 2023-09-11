@@ -333,23 +333,37 @@ class JoyListener:
 
             #Cam Yaw State
             if self.cam_yaw == True:
-                proj_ang = self.cy_pos - self.cy_out
-                #print("proj_ang: ", proj_ang, self.cy_out)
-                #120 accounts for it, 170 is blocked by servo size
-                if (proj_ang < 170 and proj_ang > 0):
-                    kit.servo[4].angle = proj_ang
-                    self.cy_pos = proj_ang
-                    #print("Yaw, ", self.cy_pos, proj_ang)
+                print(self.cy_out)
+                if self.cy_out >= 2.0 and self.cy_out <= 3.0: #2.0-3.0
+                    proj_ang = (self.cy_out - 2.0) * 170
+                    print(proj_ang)
+                    if (proj_ang < 170 and proj_ang > 0):
+                        kit.servo[4].angle = proj_ang
+                        self.cy_pos = proj_ang
+                elif self.cy_out <= 1 and self.cy_out >= -1:
+                    proj_ang = self.cy_pos - self.cy_out
+                    #print("proj_ang: ", proj_ang, self.cy_out)
+                    #120 accounts for it, 170 is blocked by servo size
+                    if (proj_ang < 170 and proj_ang > 0):
+                        kit.servo[4].angle = proj_ang
+                        self.cy_pos = proj_ang
+                        #print("Yaw, ", self.cy_pos, proj_ang)
 
             #Cam Pitch State
             if self.cam_pitch == True:
-                proj_ang = self.cp_pos + self.cp_out
-                #print("proj_ang: ", proj_ang, self.cp_out)
-                #160 fully reversed, maybe 55 for not?
-                if (proj_ang < 160 and proj_ang > 0):
-                    kit.servo[5].angle = proj_ang
-                    self.cp_pos = proj_ang
-                    #print("Pitch, ", self.cp_pos, proj_ang)
+                if self.cp_out >= 2.0 and self.cp_out <= 3.0: #2.0-3.0
+                    proj_ang = (self.cp_out - 2.0) * 160
+                    if (proj_ang < 160 and proj_ang > 0):
+                        kit.servo[5].angle = proj_ang
+                        self.cp_pos = proj_ang
+                elif self.cp_out <= 1 and self.cp_out >= -1:
+                    proj_ang = self.cp_pos + self.cp_out
+                    #print("proj_ang: ", proj_ang, self.cp_out)
+                    #160 fully reversed, maybe 55 for not?
+                    if (proj_ang < 160 and proj_ang > 0):
+                        kit.servo[5].angle = proj_ang
+                        self.cp_pos = proj_ang
+                        #print("Pitch, ", self.cp_pos, proj_ang)
 
 
             rate.sleep()
