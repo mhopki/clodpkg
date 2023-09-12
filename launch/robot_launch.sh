@@ -19,4 +19,7 @@ export ROS_MASTER_URI=http://192.168.129.249:11311
 
 
 # Launch the roslaunch file
-roslaunch clod_pkg clod.launch
+roslaunch clod_pkg clod.launch &
+roslaunch realsense2_camera rs_t265.launch &
+
+wait
