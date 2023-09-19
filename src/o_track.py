@@ -70,6 +70,7 @@ class POCont:
 		self.reset_point = 0
 
 		self.waypoints = []
+		self.has_target = False
 
 		self.r_pos = [0.0, 0.0]
 		self.r_theta = -100.0
@@ -133,7 +134,7 @@ class POCont:
 	def cam_orient(self, current_pose, ox, oy, kpx, kpy):
 	    dx = ox - current_pose.pose.pose.position.x
 	    dy = oy - current_pose.pose.pose.position.y
-	    desired_heading = math.atan2(dy, -dx) - (math.pi*0.5)
+	    desired_heading = math.atan2(-dy, -dx) - (math.pi*0.5)
 
 	    cur_or = current_pose.pose.pose.orientation.z 
 	    if cur_or < 0:
@@ -162,20 +163,22 @@ class POCont:
 	    
 	    heading_error = -heading_error
 	    heading_error_gen = -heading_error_gen
-	    print("cam_error: ", heading_error, heading_error_gen)
+	    #print("cam_error: ", heading_error, heading_error_gen)
 	    cex = ((kpx * heading_error)/math.pi + 3.0)
 	    if (1.0 - (heading_error_gen / math.pi) > 0 and 1.0 - (heading_error_gen / math.pi) <= 1.0):
 	    	truecx = 3.0 - (heading_error_gen / math.pi)
+	    	truecy = 2.0
 	    else:
 	    	truecx = 3.0 - (1.0 + (heading_error_gen / math.pi))
+	    	truecy = 3.0
 	    cey = ((kpy * 0)/math.pi + 3.0)
 	    #truecx = (cex - 3.0)
-	    if heading_error_gen > 0:
-	    	truecy = 2.0
-	    else:
-	    	truecy = 2.0
-	    print("cmds: ", cex, cey)
-	    print("cmds_true: ", truecx, truecy)
+	    #if heading_error_gen > 0:
+	    #	truecy = 2.0
+	    #else:
+	    #	truecy = 2.0
+	    #print("cmds: ", cex, cey)
+	    #print("cmds_true: ", truecx, truecy)
 	    return truecx, truecy
 
 	def set_rtheta(self):
@@ -284,6 +287,8 @@ class POCont:
 	    # Calculate linear velocity as a proportion of the distance to the waypoint
 	    linear_distance = math.sqrt((waypoint_pose.pose.pose.position.x - current_pose.pose.pose.position.x)**2 + 
 	                                (waypoint_pose.pose.pose.position.y - current_pose.pose.pose.position.y)**2)
+
+	    linear_distance = abs(current_pose.twist.twist.linear.x) - 0.25
 	    linear_velocity = kp_linear * linear_distance
 	    
 	    # Calculate angular velocity as a proportion of the heading error
@@ -319,6 +324,7 @@ class POCont:
 	def spin(self):
 		rate = rospy.Rate(1000)
 		# Publish the Joy message repeatedly
+		scan_dir = 0
 		while not rospy.is_shutdown():
 			time_since_last_receive = rospy.Time.now() - self.last_received_time
 			self.set_rtheta()
@@ -328,6 +334,7 @@ class POCont:
 			anggain = 8.0 * 20#8.0#5.0#3.0
 			kpx = 1.0
 			kpy = 1.0
+			lin_out = 0
 			#print("time_gap: ", time_since_last_receive)
 
 			if time_since_last_receive.to_sec() > 1.0 and time_since_last_receive.to_sec() < 2.0:
@@ -353,11 +360,25 @@ class POCont:
 				#fixed_odom = self.r_odom
 				#fixed_odom.pose.pose.orientation.z = self.r_theta
 				lin, ang = self.calculate_desired_cmd(fixed_odom, self.g_odom, lingain, anggain)
-				cam_dir = self.cam_orient(fixed_odom, 5, 0)
+				scan_dir = 0
+				if (self.has_target or True):
+					camx, camy = self.cam_orient(fixed_odom, 0, 0, kpx, kpy)
+				else:
+					dumx = fixed_odom.pose.pose.position.x + 10*math.cos(scan_dir + self.r_theta)
+					dumy = fixed_odom.pose.pose.position.y + 10*math.sin(scan_dir + self.r_theta)
+					camx, camy = self.cam_orient(fixed_odom, dumx, dumy, kpx, kpy)
+					scan_dir += 0.001
+					if scan_dir > math.pi:
+						scan_dir -= 2 * math.pi
+					elif scan_dir < -math.pi:
+						scan_dir += 2 * math.pi
+					#print("dummy_dir: ", dumx, dumy, scan_dir)
+				self.joy_msg.axes[r_atc["ABS_HAT0X"]] = camx
+				self.joy_msg.axes[r_atc["ABS_HAT0Y"]] = camy
 				#print("outs:", lin, ang)
 
-				if lin > 0.4:
-					lin = 0.4
+				#if lin > 0.4:
+				#	lin = 0.4
 
 				if ang > 0.4:
 					ang = 0.4
@@ -367,10 +388,16 @@ class POCont:
 					#ang = ang / 10
 					print(dist)
 
-				lin_out = lin # + 0.2
+				lin_out = lin_out + lin # + 0.2
 				if lin_out < 0.2:
 					lin_out = 0.2
 				lin_out = 0.5
+
+				#lin_out = lin_out + lin # + 0.2
+				#if (lin_out > 0.6):
+				#	lin_out = 0.6
+				#print("lins: ", lin_out, lin)
+
 				ang_out_f = -((ang / 2) + 0.025)*4
 				if ang_out_f > 1.0:
 					ang_out_f = 1.0
@@ -383,7 +410,7 @@ class POCont:
 					ang_out_r = -1.0
 
 				self.last_received_time = rospy.Time.now()
-				#self.joy_msg.axes[r_atc["ABS_RZ"]] = lin_out
+				self.joy_msg.axes[r_atc["ABS_RZ"]] = 0#lin_out
 				self.joy_msg.axes[r_atc["ABS_X"]] = ang_out_f
 				self.joy_msg.axes[r_atc["ABS_RX"]] = -ang_out_r
 				"""
@@ -446,16 +473,28 @@ class POCont:
 			else:
 				x = 0
 				print("wtf")
-				camx, camy = self.cam_orient(fixed_odom, 5, 0, kpx, kpy)
-				print("cur_pos: ", self.r_theta)
+				if (self.has_target or True):
+					camx, camy = self.cam_orient(fixed_odom, 0, 1, kpx, kpy)
+				else:
+					dumx = fixed_odom.pose.pose.position.x + 10*math.cos(scan_dir)
+					dumy = fixed_odom.pose.pose.position.y + 10*math.sin(scan_dir)
+					camx, camy = self.cam_orient(fixed_odom, dumx, dumy, kpx, kpy)
+					scan_dir += 0.001
+					if scan_dir > math.pi:
+						scan_dir -= 2 * math.pi
+					elif scan_dir < -math.pi:
+						scan_dir += 2 * math.pi
+					#print("dummy_dir: ", dumx, dumy, scan_dir)
+				#camx, camy = self.cam_orient(fixed_odom, 0, 1, kpx, kpy)
+				#print("cur_pos: ", self.r_theta)
 				if len(self.waypoints) > 0:
 					self.g_loc[0] = self.r_pos[0]
 					self.g_loc[1] = self.r_pos[1]
 				#print("WTF", self.r_pos, self.g_loc)
 				self.last_received_time = rospy.Time.now()
 				#self.joy_msg.axes[r_atc["ABS_RZ"]] = lin_out
-				self.joy_msg.axes[r_atc["ABS_HAT0X"]] = 2.0
-				#self.joy_msg.axes[r_atc["ABS_HAT0Y"]] = 0
+				self.joy_msg.axes[r_atc["ABS_HAT0X"]] = camx
+				self.joy_msg.axes[r_atc["ABS_HAT0Y"]] = camy
 
 			# Publish the Joy message
 			if (time_since_last_receive.to_sec() < 2.0):

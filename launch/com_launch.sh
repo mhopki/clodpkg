@@ -1,9 +1,14 @@
 #!/bin/bash
 
 #mrsl_perch
-export ROS_IP=192.168.129.249 
+#export ROS_IP=192.168.129.249 
 # Set ROS_MASTER_URI to your computer's IP address and default port
-export ROS_MASTER_URI=http://192.168.129.249:11311
+#export ROS_MASTER_URI=http://192.168.129.249:11311
+
+#scalar_av
+export ROS_IP=192.168.1.100 
+# Set ROS_MASTER_URI to your computer's IP address and default port
+export ROS_MASTER_URI=http://192.168.1.100:11311
 
 
 #mrsl_mast

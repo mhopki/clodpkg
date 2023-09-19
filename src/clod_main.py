@@ -351,9 +351,11 @@ class JoyListener:
 
             #Cam Pitch State
             if self.cam_pitch == True:
+                print(self.cp_out)
                 if self.cp_out >= 2.0 and self.cp_out <= 3.0: #2.0-3.0
                     proj_ang = (self.cp_out - 2.0) * 160
                     if (proj_ang < 160 and proj_ang > 0):
+                        print(proj_ang)
                         kit.servo[5].angle = proj_ang
                         self.cp_pos = proj_ang
                 elif self.cp_out <= 1 and self.cp_out >= -1:
