@@ -2,6 +2,9 @@
 
 joy control for clodbuster car
 
+install spinnaker sdk:
+https://www.flir.com/support-center/iis/machine-vision/application-note/using-spinnaker-on-arm-and-embedded-systems/
+
 install flir_camera_driver as well:
 
 https://github.com/ros-drivers/flir_camera_driver
