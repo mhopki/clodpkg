@@ -55,8 +55,8 @@ r_btc = {value: key for key, value in button_codes.items()}
 r_atc = {value: key for key, value in axis_codes.items()}
 
 #Wheel pin voltage control
-kit.servo[0].set_pulse_width_range(0,17000)
-kit.servo[2].set_pulse_width_range(0,17000)
+kit.servo[0].set_pulse_width_range(0,19000)
+kit.servo[2].set_pulse_width_range(0,19000)
 
 #Servo pin voltage pwm control
 kit.servo[1].set_pulse_width_range(1000,2000)
@@ -333,11 +333,11 @@ class JoyListener:
 
             #Cam Yaw State
             if self.cam_yaw == True:
-                print(self.cy_out)
+                #print(self.cy_out)
                 if self.cy_out >= 2.0 and self.cy_out <= 3.0: #2.0-3.0
                     proj_ang = (self.cy_out - 2.0) * 170
-                    print(proj_ang)
-                    if (proj_ang < 170 and proj_ang > 0):
+                    #print(proj_ang)
+                    if (proj_ang <= 170 and proj_ang >= 0):
                         kit.servo[4].angle = proj_ang
                         self.cy_pos = proj_ang
                 elif self.cy_out <= 1 and self.cy_out >= -1:
@@ -351,9 +351,11 @@ class JoyListener:
 
             #Cam Pitch State
             if self.cam_pitch == True:
+                #print(self.cp_out)
                 if self.cp_out >= 2.0 and self.cp_out <= 3.0: #2.0-3.0
                     proj_ang = (self.cp_out - 2.0) * 160
-                    if (proj_ang < 160 and proj_ang > 0):
+                    #print(proj_ang)
+                    if (proj_ang <= 160 and proj_ang >= 0):
                         kit.servo[5].angle = proj_ang
                         self.cp_pos = proj_ang
                 elif self.cp_out <= 1 and self.cp_out >= -1:
