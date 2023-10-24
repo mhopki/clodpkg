@@ -1,18 +1,26 @@
 # clodpkg
 
-joy control for clodbuster car
+Control for clodbuster car
 
-install spinnaker sdk:
+
+>Install spinnaker sdk:
 
 https://www.flir.com/support-center/iis/machine-vision/application-note/using-spinnaker-on-arm-and-embedded-systems/
 
 (for Ubuntu 18.04 download Spinnaker 2.7.0.128)
 
-install flir_camera_driver as well:
+
+>ROS-Camera-Driver:
+>>Install flir_camera_driver:
 
 https://github.com/ros-drivers/flir_camera_driver
 
-Flir requirements:
+>>for Ubuntu 18.04: Install pointgrey_camera_driver (main-branch)
+
+http://wiki.ros.org/pointgrey_camera_driver
+
+
+>Flir/Pointgrey requirements:
 
 sudo apt install ros-melodic-image-exposure-msgs 
 
