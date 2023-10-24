@@ -32,3 +32,10 @@ Control for clodbuster car
 
 >>Ubuntu 18.04:
 >>https://learn.adafruit.com/circuitpython-libraries-on-linux-and-the-nvidia-jetson-nano/initial-setup
+>>
+>>python -m pip install --upgrade setuptools
+python -m pip install --upgrade pip
+>>
+>>sudo apt-get update
+sudo apt-get install libcups2-dev
+>>sudo apt install libgirepository1.0-dev
