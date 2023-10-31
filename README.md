@@ -15,7 +15,7 @@ Control for clodbuster car
 
 >>>https://github.com/ros-drivers/flir_camera_driver
 
->>for Ubuntu 18.04: Install pointgrey_camera_driver (main-branch)
+>>for Ubuntu 18.04: Install pointgrey_camera_driver (main-branch) OR for Ubuntu 20.04 use noetic-branch for 
 >>>http://wiki.ros.org/pointgrey_camera_driver
 
 
