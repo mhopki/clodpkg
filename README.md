@@ -39,3 +39,15 @@ python -m pip install --upgrade pip
 >>sudo apt-get update
 sudo apt-get install libcups2-dev
 >>sudo apt install libgirepository1.0-dev
+>>
+
+>Ublox requirements:
+>>install ublox
+>>
+>>roslaunch ublox_gps ublox_device_beast.launch param_file_name:=alice param_file_dir:=/home/beast/catkin_ws/src/ublox/ublox_gps/config
+>> add user to group for ttyACM0
+>>> sudo usermod -a -G dailout beast (check what the group is first, dailout was the group in this example. beast is the name of the user)
+>>>
+
+>Ntrip client
+>>install ntrip client and configure
