@@ -1,0 +1,9 @@
+<launch>
+  <!--param name="use_sim_time" value="true" -->
+  <node name="RVIZ" pkg="rviz" type="rviz" args=" -d $(find clod_pkg)/param/odom_gps_setup.rviz" />
+  <node pkg="tf2_ros" type="static_transform_publisher" name="base_link_frame_publisher" args="0 0 0 0 0 0 base_link camera_odom_frame" />
+  <node pkg="tf2_ros" type="static_transform_publisher" name="camera_odom_frame_publisher" args="0 0 0 -3.25 0 0 map base_link" />
+  <node pkg="clod_pkg" type="gps_to_path.py" name="gps_conv" output="screen" />
+  <node pkg="clod_pkg" type="odom_to_path.py" name="odom_conv" output="screen" />
+  <node pkg="clod_pkg" type="ukf_odom_gps.py" name="ukf_fuse" output="screen" />
+</launch>

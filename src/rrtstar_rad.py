@@ -444,9 +444,42 @@ for i in range(len(smoothed_path) - 1):
 
 o_off_x = 0
 o_off_y = 0
+shape_t = 0
+if shape_t == 0:
+    true_path = []
+    true_path.append(Node(3.0,0))
 
-#true_path
-if (path_good == True):
+if shape_t == 1:
+    true_path = []
+    true_path.append(Node(2.5,0))
+    true_path.append(Node(2.5,2.5))
+    true_path.append(Node(0,2.5))
+    true_path.append(Node(0,0))
+
+if shape_t == 2:
+    true_path = []
+    radc = 2.5/2
+    o_off_x = radc
+    o_off_y = radc
+    radc = 2.5/2
+    ang = np.linspace(0,2*np.pi, 16)
+    for i in range(12,16):
+        true_path.append(Node(radc * np.cos(ang[i]),radc * np.sin(ang[i])))
+    for i in range(0,12):
+        true_path.append(Node(radc * np.cos(ang[i]),radc * np.sin(ang[i])))
+
+    """
+    true_path.append(Node(radc * np.cos(1.25*np.pi),radc * np.sin(1.25*np.pi)))
+    true_path.append(Node(radc * np.cos(1.5*np.pi),radc * np.sin(1.5*np.pi)))
+    true_path.append(Node(radc * np.cos(1.75*np.pi),radc * np.sin(1.75*np.pi)))
+    true_path.append(Node(radc * np.cos(2*np.pi),radc * np.sin(2*np.pi)))
+    true_path.append(Node(radc * np.cos(0.25*np.pi),radc * np.sin(0.25*np.pi)))
+    true_path.append(Node(radc * np.cos(0.5*np.pi),radc * np.sin(0.5*np.pi)))
+    true_path.append(Node(radc * np.cos(0.75*np.pi),radc * np.sin(0.75*np.pi)))
+    true_path.append(Node(radc * np.cos(1*np.pi),radc * np.sin(1*np.pi)))"""
+
+#
+if (True and False):
     way_path = []
     way_out = PoseStamped()
     way_out.pose.position.x = true_path[0].x + o_off_x
@@ -458,6 +491,47 @@ if (path_good == True):
     last_y = true_path[0].y + o_off_y
     for i in range(1,len(true_path) - 1):
         if (math.sqrt(((true_path[i].x + o_off_x) - last_x)**2 + ((true_path[i].y + o_off_y) - last_y)**2) >= 0.1):
+            way_out = PoseStamped()
+            way_out.pose.position.x = true_path[i].x + o_off_x
+            way_out.pose.position.y = true_path[i].y + o_off_y
+            way_pub.publish(way_out)
+            way_path.append(Node(true_path[i].x, true_path[i].y))
+            #plt.plot([last_x, smoothed_path[i].x - 2], [last_y, smoothed_path[i].y + 2], 'y-')
+            last_x = true_path[i].x + o_off_x
+            last_y = true_path[i].y + o_off_y
+
+    way_out = PoseStamped()
+    way_out.pose.position.x = true_path[-1].x + o_off_x
+    way_out.pose.position.y = true_path[-1].y + o_off_y
+    way_pub.publish(way_out)
+    way_path.append(Node(true_path[-1].x, true_path[-1].y))
+    #plt.plot([last_x, smoothed_path[i].x - 2], [last_y, smoothed_path[i].y + 2], 'y-')
+    if i < len(true_path):
+        last_x = true_path[i].x + o_off_x
+        last_y = true_path[i].y + o_off_y
+
+    for node in way_path:
+        xx = 0
+        #print("node: ", node.x, node.y)
+
+    for i in range(len(way_path) - 1):
+        xxx = 0
+        plt.plot([way_path[i].x, way_path[i + 1].x], [way_path[i].y, way_path[i + 1].y], 'r-')
+
+
+#true_path
+if (True):
+    way_path = []
+    way_out = PoseStamped()
+    way_out.pose.position.x = true_path[0].x + o_off_x
+    way_out.pose.position.y = true_path[0].y + o_off_y
+    way_pub.publish(way_out)
+    way_path.append(Node(true_path[0].x, true_path[0].y))
+
+    last_x = true_path[0].x + o_off_x
+    last_y = true_path[0].y + o_off_y
+    for i in range(1,len(true_path) - 1):
+        if (True):#math.sqrt(((true_path[i].x + o_off_x) - last_x)**2 + ((true_path[i].y + o_off_y) - last_y)**2) >= 0.1):
             way_out = PoseStamped()
             way_out.pose.position.x = true_path[i].x + o_off_x
             way_out.pose.position.y = true_path[i].y + o_off_y
@@ -536,6 +610,7 @@ if (False):
     way_out.pose.position.y = smoothed_path[-1].y + 2
     way_pub.publish(way_out)
 
+"""
 plt.scatter([node.x for node in path], [node.y for node in path], color='blue', label='Path')
 plt.scatter([node.x for node in path], [node.y for node in path], color='yellow', label='Path(Smooth)')
 plt.scatter(start.x, start.y, color='green', label='Start')
@@ -547,7 +622,7 @@ plt.ylabel('Y')
 plt.xlim(X_MIN, X_MAX)
 plt.ylim(Y_MIN, Y_MAX)
 plt.grid()
-plt.show()
+plt.show()"""
 
 #print("start: ", start.x, start.y)
 #for node in path:
