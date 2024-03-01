@@ -12,9 +12,13 @@ import utm
 from geometry_msgs.msg import PoseStamped
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from math import atan2
-from tf.transformations import quaternion_slerp, quaternion_multiply
+from tf.transformations import quaternion_slerp, quaternion_multiply, quaternion_inverse
 import numpy as np
 from filterpy.kalman import MerweScaledSigmaPoints, UnscentedKalmanFilter
+from tf.transformations import quaternion_from_euler
+import tf2_ros
+from tf.transformations import quaternion_from_euler
+from geometry_msgs.msg import TransformStamped
 
 class UkfLocalizationNode:
     def __init__(self):
@@ -23,6 +27,13 @@ class UkfLocalizationNode:
         # Subscribe to Odometry and NavSatFix messages
         rospy.Subscriber('/camera/odom/sample', Odometry, self.odom_callback)
         rospy.Subscriber('/mavros/global_position/global', NavSatFix, self.gps_callback)
+
+        self.broadcaster = tf2_ros.TransformBroadcaster()
+
+        # Initial transform (you may set this based on your current configuration)
+        self.transform = TransformStamped()
+        self.transform.header.frame_id = 'map'
+        self.transform.child_frame_id = 'camera_frame'
 
         # Advertise the fused localization estimate
         self.localization_pub = rospy.Publisher('/fused_localization', Odometry, queue_size=10)
@@ -38,6 +49,9 @@ class UkfLocalizationNode:
         self.last_odom_msg = None
         self.last_gps_msg = None
         self.first_gps_msg = None  # Initialize first_gps_msg here
+
+        self.translated = False
+        self.reori = 20
         #print("init has run")
 
     def odom_callback(self, odom_msg):
@@ -84,16 +98,23 @@ class UkfLocalizationNode:
             delta_y = (northing - self.first_gps_msg.pose.position.y) - self.last_gps_msg.pose.position.y
             delta_z = (gps_msg.altitude - self.first_gps_msg.pose.position.z) - self.last_gps_msg.pose.position.z
 
+            delta_x2 = self.last_gps_msg.pose.position.x - pose_stamped.pose.position.x 
+            delta_y2 = self.last_gps_msg.pose.position.y - pose_stamped.pose.position.y
+            delta_z2 = self.last_gps_msg.pose.position.z - pose_stamped.pose.position.z
+
             # Calculate the yaw angle (rotation around the z-axis)
             yaw_angle = atan2(delta_y, delta_x)
 
             # Convert the yaw angle to a quaternion
             quaternion = quaternion_from_euler(0, 0, yaw_angle)
 
+            if abs(delta_x) > 0 or abs(delta_x2) > 0 or abs(delta_y) > 0 or abs(delta_y2) > 0:
+                self.translated = True
+
 
             # If it's the first pose message, just return a default quaternion
-            if delta_x == 0 and delta_y == 0:
-                quaternion = quaternion_from_euler(0, 0, 1)
+            #if delta_x == 0 and delta_y == 0:
+            #    quaternion = quaternion_from_euler(0, 0, 1)
 
         #self.last_gps_msg = pose_stamped - self.first_gps_msg
         self.last_gps_msg = PoseStamped()
@@ -121,6 +142,68 @@ class UkfLocalizationNode:
         if self.last_odom_msg is not None and self.last_gps_msg is not None:
             odom_position = self.last_odom_msg.pose.pose.position
             gps_position = self.last_gps_msg.pose.position
+
+            #print(self.last_gps_msg.pose.orientation)
+            if (self.reori and self.translated):
+                gps_orientation = self.last_gps_msg.pose.orientation
+                camera_orientation = self.last_odom_msg.pose.pose.orientation
+
+                gps_orientation = np.array([gps_orientation.x, gps_orientation.y, gps_orientation.z, gps_orientation.w])
+                camera_orientation = np.array([camera_orientation.x, camera_orientation.y, camera_orientation.z, camera_orientation.w])
+
+                # Calculate the orientation difference
+                orientation_difference = quaternion_multiply(gps_orientation, quaternion_inverse(camera_orientation))
+                print(orientation_difference)
+
+                """
+                # Calculate the differences in each component
+                diff_x = gps_orientation[0] - camera_orientation[0]
+                diff_y = gps_orientation[1] - camera_orientation[1]
+                diff_z = gps_orientation[2] - camera_orientation[2]
+                diff_w = gps_orientation[3] - camera_orientation[3]
+
+                # Scale the differences by the interpolation factor
+                scaled_diff_x = diff_x * (self.reori / 20)
+                scaled_diff_y = diff_y * (self.reori / 20)
+                scaled_diff_z = diff_z * (self.reori / 20)
+                scaled_diff_w = diff_w * (self.reori / 20)
+
+                # Apply the scaled differences to gps_orientation
+                gps_orientation[0] += scaled_diff_x
+                gps_orientation[1] += scaled_diff_y
+                gps_orientation[2] += scaled_diff_z
+                gps_orientation[3] += scaled_diff_w
+
+                # Update the transform quaternion
+                
+
+                # Update the transform quaternion
+                self.transform = TransformStamped()
+                self.transform.header.frame_id = 'map'
+                self.transform.child_frame_id = 'base_link'
+                #self.transform.transform.rotation.x = rot1.x# * (self.reori / 20)
+                #self.transform.transform.rotation.y = rot1.y# * (self.reori / 20)
+                #self.transform.transform.rotation.z = rot1.z# * (self.reori / 20)
+                #self.transform.transform.rotation.w = rot1.w# * (self.reori / 20)
+                #rotin = np.array([rot1.x, rot1.y, rot1.z, rot1.w])
+                #self.transform.transform.rotation = Quaternion(*rot1)
+                self.transform.transform.rotation = geometry_msgs.msg.Quaternion(*gps_orientation)"""
+                
+                #"""
+                self.transform = TransformStamped()
+                self.transform.header.frame_id = 'map'
+                self.transform.child_frame_id = 'base_link'
+                self.transform.transform.rotation.x = orientation_difference[0]# * (self.reori / 20)
+                self.transform.transform.rotation.y = orientation_difference[1]# * (self.reori / 20)
+                self.transform.transform.rotation.z = orientation_difference[2]# * (self.reori / 20)
+                self.transform.transform.rotation.w = orientation_difference[3]# * (self.reori / 20)#"""
+
+                #transformed_quaternion = do_transform_quaternion(quaternion, transform_stamped)
+
+                self.broadcaster.sendTransform(self.transform)
+
+                self.reori -= 1
+                self.translated = False
 
             # Use Unscented Kalman Filter for state estimation
             points = MerweScaledSigmaPoints(4, alpha=0.1, beta=2.0, kappa=-1.0)

@@ -6,6 +6,7 @@ from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 import utm
+from math import atan2
 
 class GpsToPathConverter:
     def __init__(self):
@@ -17,6 +18,7 @@ class GpsToPathConverter:
         self.path = Path()
         self.path.header.frame_id = 'map'  # Set the frame_id, adjust as needed
         self.first = None
+        self.last = None
 
     def gps_callback(self, gps_msg):
         # Convert GPS coordinates to UTM coordinates
@@ -32,7 +34,16 @@ class GpsToPathConverter:
         pose_stamped.pose.position.z = (gps_msg.altitude - self.first[2])
 
         # Convert GPS orientation to quaternion
-        quaternion = quaternion_from_euler(0, 0, 1)#gps_msg.track)
+        if self.last == None:
+            quaternion = quaternion_from_euler(0, 0, 1)#gps_msg.track)
+        else:
+            # Calculate the yaw angle (rotation around the z-axis)
+            delta_x = pose_stamped.pose.position.x - self.last.pose.position.x
+            delta_y = pose_stamped.pose.position.y - self.last.pose.position.y
+            yaw_angle = atan2(delta_y, delta_x)
+
+            # Convert the yaw angle to a quaternion
+            quaternion = quaternion_from_euler(0, 0, yaw_angle)
 
         pose_stamped.pose.orientation.x = quaternion[0]
         pose_stamped.pose.orientation.y = quaternion[1]
@@ -42,6 +53,8 @@ class GpsToPathConverter:
         # Add the PoseStamped to the Path
         self.path.header.stamp = rospy.Time.now()
         self.path.poses.append(pose_stamped)
+
+        self.last = pose_stamped
 
         # Publish the Path
         self.path_pub.publish(self.path)

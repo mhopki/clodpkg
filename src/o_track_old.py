@@ -88,30 +88,48 @@ class POCont:
 		self.g_thres = 0.3 #threshold of goal waypoint
 
 	def odom_callback(self, data):
-
+	    # Your processing code here
+	    # This function will be called whenever a new message is received
+	    #print("pose: ", data.pose.pose)
+	    #print("twist: ", data.twist.twist)
 	    self.r_pos = [data.pose.pose.position.x, data.pose.pose.position.y]
 	    if self.r_theta == -100.0:
 	    	self.r_theta = data.pose.pose.orientation.z
 	    	self.prev_theta = self.r_theta
 	    self.r_twist = [data.twist.twist.linear.y, data.twist.twist.angular.z]
 	    self.r_odom = data
+	    #print(self.r_odom)
+	    #print(data.pose.pose.position.x)
+	    #print(self.r_odom.pose.pose.orientation.z, self.r_odom.twist.twist.angular.z, self.r_theta)
 
 	def odom_callback_cam(self, data):
-
+	    # Your processing code here
+	    # This function will be called whenever a new message is received
+	    #print("pose: ", data.pose.pose)
+	    #print("twist: ", data.twist.twist)
 	    self.r_pos = [data.pose.pose.position.x, data.pose.pose.position.y]
 	    if self.r_theta == -100.0:
 	    	self.r_theta = data.pose.pose.orientation.z
 	    	self.prev_theta = self.r_theta
 	    self.r_twist = [data.twist.twist.linear.x, data.twist.twist.angular.z]
 	    self.r_odom = data
+	    #print(self.r_odom)
+	    #print(data.pose.pose.position.x)
+	    #print(self.r_odom.pose.pose.orientation.z, self.r_odom.twist.twist.angular.z, self.r_theta)
 
 	def waypoint_callback(self, data):
-
+	    # Your processing code here
+	    # This function will be called whenever a new message is received
+	    #self.g_loc = [self.g_odom.pose.pose.position.x, self.g_odom.pose.pose.position.y]
+	    #self.g_odom = data
+	    #print("got waypoint")
 	    print("way_coords: ", data.pose.position.x, data.pose.position.y)
 	    self.waypoints.append(data)
 
 	def pose_callback(self, data):
-		#Do nothing
+	    # Your processing code here
+	    # This function will be called whenever a new message is received
+	    #print("pose:", data)
 	    x = 0
 
 	def cam_orient(self, current_pose, ox, oy, kpx, kpy):
@@ -126,8 +144,7 @@ class POCont:
 
 	    heading_error_gen = desired_heading - (cur_or * math.pi) - (math.radians(180))
 	    heading_error = desired_heading - (cur_or * math.pi) - (math.radians(self.r_theta_cam[0]))
-	    
-	    #Correct orientation of robot to fit within -pi to pi
+	    #print("ORIG cam_error: ", heading_error, heading_error_gen)
 	    if (True):#10000
 	    	if heading_error > math.pi:
 	    		heading_error -= 2 * math.pi
@@ -147,7 +164,7 @@ class POCont:
 	    
 	    heading_error = -heading_error
 	    heading_error_gen = -heading_error_gen
-	    
+	    #print("cam_error: ", heading_error, heading_error_gen)
 	    cex = ((kpx * heading_error)/math.pi + 3.0)
 	    if (1.0 - (heading_error_gen / math.pi) > 0 and 1.0 - (heading_error_gen / math.pi) <= 1.0):
 	    	truecx = 3.0 - (heading_error_gen / math.pi)
@@ -156,7 +173,13 @@ class POCont:
 	    	truecx = 3.0 - (1.0 + (heading_error_gen / math.pi))
 	    	truecy = 3.0
 	    cey = ((kpy * 0)/math.pi + 3.0)
-
+	    #truecx = (cex - 3.0)
+	    #if heading_error_gen > 0:
+	    #	truecy = 2.0
+	    #else:
+	    #	truecy = 2.0
+	    #print("cmds: ", cex, cey)
+	    #print("cmds_true: ", truecx, truecy)
 	    return truecx, truecy
 
 	def set_rtheta(self):
@@ -180,9 +203,17 @@ class POCont:
 					self.prev_theta = des_t
 					self.r_theta = -des_t
 					#print("neg side")
+			#self.r_theta += self.r_odom.twist.twist.angular.z
+			#if self.r_theta < -1:
+			#	self.r_theta = 1
+			#if self.r_theta > 1:
+			#	self.r_theta = -1
 
 
 	def straighten(self, des_or):
+	    # Your processing code here
+	    # This function will be called whenever a new message is received
+	    #print("pose:", data)
 	    #negative is right, pos is left
 	    self.des_swait = 1
 	    if self.des_swait >= 1:
@@ -222,6 +253,13 @@ class POCont:
 	    
 	    # Calculate the desired heading angle using arctangent (atan2)
 	    desired_heading = math.atan2(dy, dx)#-math.atan2(dx, dy)
+
+	    # Normalize the desired heading to the range of 0 to 2π
+	    # Normalize the desired heading to the range of -π to π
+	    #if desired_heading > math.pi:
+	    #    desired_heading -= 2 * math.pi
+	    #elif desired_heading < -math.pi:
+	    #    desired_heading += 2 * math.pi
 	    
 	    return desired_heading
 
@@ -258,6 +296,13 @@ class POCont:
 	    # Calculate angular velocity as a proportion of the heading error
 	    angular_velocity = kp_angular * heading_error
 
+	    #print("theta error: ", heading_error)
+	    #print("lin: ", linear_velocity, "| ang: ", angular_velocity)
+	    #linear_velocity = 0.4
+	    #print(desired_heading, " vs ", current_pose.pose.pose.orientation.z, current_pose.pose.pose.orientation.z * math.pi)
+	    #print(desired_heading, " vs ", current_pose.pose.pose.orientation.z)
+	    #print(math.degrees(desired_heading), " vs ", math.degrees(current_pose.pose.pose.orientation.z * math.pi) )
+
 	    return linear_velocity, angular_velocity
 
 	
@@ -266,6 +311,21 @@ class POCont:
 	    linear_distance = targ_vel - (abs(current_pose.twist.twist.linear.x) + abs(current_pose.twist.twist.linear.y) + abs(current_pose.twist.twist.linear.z))
 	    linear_velocity = kp_linear * linear_distance
 	    return linear_velocity
+	"""
+	def calculate_desired_angular_acceleration(self, current_pose, waypoint_pose, max_angular_acceleration):
+	    # Calculate the desired heading angle
+	    desired_heading = self.calculate_desired_heading(current_pose, waypoint_pose)
+	    
+	    # Calculate the difference between current and desired heading angles
+	    current_heading = self.calculate_heading_from_quaternion(current_pose.orientation)
+	    heading_difference = self.angle_difference(desired_heading, current_heading)
+	    
+	    # Calculate desired angular accelerationheading_error
+	    desired_angular_acceleration = max(min(heading_difference, max_angular_acceleration),
+	                                        -max_angular_acceleration)
+	    
+	    return desired_angular_acceleration
+	"""
 	    
 
 	def spin(self):
@@ -314,7 +374,8 @@ class POCont:
 				#WE ON GO
 				#Robot is travelling
 				dist = self.calculate_distance(self.r_pos[0], self.r_pos[1], self.g_loc[0], self.g_loc[1])
-
+				#fixed_odom = self.r_odom
+				#fixed_odom.pose.pose.orientation.z = self.r_theta
 				lin, ang = self.calculate_desired_cmd(fixed_odom, self.g_odom, lingain, anggain)
 				scan_dir = 0
 				if (self.has_target or True):
@@ -328,20 +389,32 @@ class POCont:
 						scan_dir -= 2 * math.pi
 					elif scan_dir < -math.pi:
 						scan_dir += 2 * math.pi
-
+					#print("dummy_dir: ", dumx, dumy, scan_dir)
 				self.joy_msg.axes[r_atc["ABS_HAT0X"]] = camx
 				self.joy_msg.axes[r_atc["ABS_HAT0Y"]] = camy
+				#print("outs:", lin, ang)
 
-				#fit desired turn radius
+				#if lin > 0.4:
+				#	lin = 0.4
+
 				if ang > 0.4:
 					ang = 0.4
 				if ang < -0.4:
 					ang = -0.4
-
-				#soften turn radius if close to goal
 				if dist < self.g_thres * 1.2:
 					#ang = ang / 10
 					print(dist)
+
+				"""
+				lin_out = lin_out + lin # + 0.2
+				if lin_out < 0.2:
+					lin_out = 0.2
+				if lin_out > 0.6:
+					lin_out = 0.6
+				print(lin_out, lin)
+				"""
+				#lin_out = 0.5 + lin # + 0.2
+				#print("s: ", lin_out)
 
 				lin = self.calc_des_vel(fixed_odom, lingain, targ_vel)
 				if lin < 0:
@@ -356,6 +429,13 @@ class POCont:
 					lin_out = 0.2
 				if lin_out > 1.0:
 					lin_out = 1.0
+				#lin_out = 0.4
+				#print("u: ", lin_out, lin)
+
+				#lin_out = lin_out + lin # + 0.2
+				#if (lin_out > 0.6):
+				#	lin_out = 0.6
+				#print("lins: ", lin_out, lin)
 
 				ang_out_f = -((ang / 2) + 0.025)*4
 				if ang_out_f > 1.0:
@@ -372,13 +452,40 @@ class POCont:
 				self.joy_msg.axes[r_atc["ABS_RZ"]] = lin_out
 				self.joy_msg.axes[r_atc["ABS_X"]] = ang_out_f
 				self.joy_msg.axes[r_atc["ABS_RX"]] = -ang_out_r
+				"""
+				self.last_received_time = rospy.Time.now()
+				des_dir = 0
+				y1 = self.r_pos[1] 
+				y2 = self.g_loc[1]
+				x1 = self.r_pos[0]
+				x2 = self.g_loc[0]
+				if x2 == x1:
+					if y2 > y1:
+						des_dir = 90.0
+					else:
+						des_dir = -90.0
+				else:
+					des_dir = math.atan2(self.g_loc[1] - self.r_pos[1], self.g_loc[0] - self.r_pos[0])
+					des_dir = math.degrees(des_dir)
+					des_dir = des_dir / 360
+				print("angle: ", des_dir, self.r_theta, abs(self.r_theta))
+
+				self.straighten(des_dir)
+				self.joy_msg.axes[r_atc["ABS_RZ"]] = self.des_speed
+				self.joy_msg.axes[r_atc["ABS_X"]] = self.des_turn"""
+				#self.joy_msg.axes[r_atc["ABS_X"]] = 1.0
+				#self.joy_msg.axes[r_atc["ABS_RX"]] = -1.0
+				#print(self.r_pos, self.r_theta, self.des_turn)
 			elif (((abs(self.r_pos[0] - self.g_loc[0]) <= self.g_thres and abs(self.r_pos[1] - self.g_loc[1]) <= self.g_thres) or self.g_met == True) and self.g_loc[0] != -10):
 				#WE MADE IT NIGGA!!!
 				self.g_met == True
-
+				#self.joy_msg = Joy()
+				#self.joy_msg.axes = [0.0] * 8
+				#self.joy_msg.buttons = [0] * 12
 				#print("SUCCESS")
 				self.reset_point += 1
 				self.reset_point = 2000
+				#print(self.reset_point)
 
 				#If waited at reset point for 1000 steps
 				if self.reset_point >= 1000:
@@ -408,8 +515,7 @@ class POCont:
 						print(self.g_loc)
 			else:
 				x = 0
-				#No waypoint commands, Idle state
-				print("waiting")
+				print("wtf")
 				if (self.has_target or True):
 					camx, camy = self.cam_orient(fixed_odom, 0, 1, kpx, kpy)
 				else:
