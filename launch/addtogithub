@@ -1,0 +1,7 @@
+add to group for ttyACM0
+
+ sudo usermod -a -G dialout beast
+
+launch ublox:
+
+roslaunch ublox_gps ublox_device_beast.launch param_file_name:=alice param_file_dir:=/home/beast/catkin_ws/src/ublox/ublox_gps/config
