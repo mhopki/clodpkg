@@ -334,17 +334,23 @@ class JoyListener:
             #Cam Yaw State
             if self.cam_yaw == True:
                 #print(self.cy_out)
+                angle_max = 170
+                angle_min = 0
                 if self.cy_out >= 2.0 and self.cy_out <= 3.0: #2.0-3.0
                     proj_ang = (self.cy_out - 2.0) * 170
                     #print(proj_ang)
-                    if (proj_ang <= 170 and proj_ang >= 0):
+                    if proj_ang > angle_max: proj_ang = angle_max
+                    if proj_ang < angle_min: proj_ang = angle_min
+                    if (proj_ang <= angle_max and proj_ang >= angle_min):#170 - 0 full rotation
                         kit.servo[4].angle = proj_ang
                         self.cy_pos = proj_ang
                 elif self.cy_out <= 1 and self.cy_out >= -1:
-                    proj_ang = self.cy_pos - self.cy_out
+                    proj_ang = self.cy_pos - (self.cy_out / 2.0)
                     #print("proj_ang: ", proj_ang, self.cy_out)
                     #120 accounts for it, 170 is blocked by servo size
-                    if (proj_ang < 170 and proj_ang > 0):
+                    if proj_ang > angle_max: proj_ang = angle_max
+                    if proj_ang < angle_min: proj_ang = angle_min
+                    if (proj_ang < angle_max and proj_ang > angle_min):
                         kit.servo[4].angle = proj_ang
                         self.cy_pos = proj_ang
                         #print("Yaw, ", self.cy_pos, proj_ang)
@@ -352,17 +358,31 @@ class JoyListener:
             #Cam Pitch State
             if self.cam_pitch == True:
                 #print(self.cp_out)
+                angle_max = 40
+                angle_min = 0
                 if self.cp_out >= 2.0 and self.cp_out <= 3.0: #2.0-3.0
                     proj_ang = (self.cp_out - 2.0) * 160
+                    
+                    if proj_ang > self.cp_pos:
+                        proj_ang = self.cp_pos + 1.0
+                    elif proj_ang < self.cp_pos:
+                        proj_ang = self.cp_pos - 1.0
+                    else:
+                        proj_ang = self.cp_pos
+                    
                     #print(proj_ang)
-                    if (proj_ang <= 160 and proj_ang >= 0):
+                    if proj_ang > angle_max: proj_ang = angle_max
+                    if proj_ang < angle_min: proj_ang = angle_min
+                    if (proj_ang <= angle_max and proj_ang >= angle_min):#160 - 0 rotation
                         kit.servo[5].angle = proj_ang
                         self.cp_pos = proj_ang
                 elif self.cp_out <= 1 and self.cp_out >= -1:
-                    proj_ang = self.cp_pos + self.cp_out
+                    proj_ang = self.cp_pos + (self.cp_out / 2.0)
                     #print("proj_ang: ", proj_ang, self.cp_out)
                     #160 fully reversed, maybe 55 for not?
-                    if (proj_ang < 160 and proj_ang > 0):
+                    if proj_ang > angle_max: proj_ang = angle_max
+                    if proj_ang < angle_min: proj_ang = angle_min
+                    if (proj_ang < angle_max and proj_ang > angle_min):
                         kit.servo[5].angle = proj_ang
                         self.cp_pos = proj_ang
                         #print("Pitch, ", self.cp_pos, proj_ang)

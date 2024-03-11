@@ -7,6 +7,8 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped
 import math
 import random
+from std_msgs.msg import Float32MultiArray
+import numpy as np
 
 
 # Initialize the ROS node and publisher
@@ -46,12 +48,14 @@ r_atc = {value: key for key, value in axis_codes.items()}
 class POCont:
 	def __init__(self):
 		rospy.init_node('po_controller', anonymous=True)
-		self.odom_sub_topic = 'fused_localization'#'/camera/odom/sample'
+		self.odom_sub_topic = '/camera/odom/sample'#'fused_localization'#'/camera/odom/sample'
 		self.joy_pub = rospy.Publisher('/joy', Joy, queue_size=100)
 		#self.odom_sub = rospy.Subscriber('/vicon/BEAST/odom', Odometry, self.odom_callback, queue_size=1, tcp_nodelay=True)
 		self.odom_sub = rospy.Subscriber(self.odom_sub_topic, Odometry, self.odom_callback_cam, queue_size=1, tcp_nodelay=True)
 		self.waypoint_sub = rospy.Subscriber('/waypoints', PoseStamped, self.waypoint_callback)
 		#pose_sub = rospy.Subscriber('/vicon/BEAST/pose', PoseStamped, pose_callback, queue_size=1, tcp_nodelay=True)
+		self.target_sub = rospy.Subscriber('/object_world_coordinates', Float32MultiArray, self.world_coordinates_callback)
+
 		self.last_received_time = rospy.Time.now()
 
 		self.current_waypoint = None
@@ -72,6 +76,8 @@ class POCont:
 
 		self.waypoints = []
 		self.has_target = False
+		self.targ_coords = [0.0, 0.0, 0.0]
+		self.cam_pose = [0,0]
 
 		self.r_pos = [0.0, 0.0]
 		self.r_theta = -100.0
@@ -87,6 +93,40 @@ class POCont:
 		self.des_swait = 0
 		self.g_thres = 0.3 #threshold of goal waypoint
 
+	def world_coordinates_callback(self, data):
+	    x_world, y_world, z_world = data.data
+	    dx = x_world - self.targ_coords[0]
+	    dy = y_world - self.targ_coords[1]
+	    dz = z_world - self.targ_coords[2]
+	    dx_inc = (dx * 0.1)
+	    dy_inc = (dy * 0.1)
+	    dz_inc = (dz * 0.05)
+	    dx_max = 2.0
+	    dy_max = 2.0
+	    dz_max = 1.0
+
+	    dx_min = 0.01
+	    dy_min = 0.01
+	    dz_min = 0.01
+	    if dx_inc < -dx_max: dx_inc = -dx_max
+	    if dx_inc > dx_max: dx_inc = dx_max
+	    if dy_inc < -dy_max: dy_inc = -dy_max
+	    if dy_inc > dy_max: dy_inc = dy_max
+	    if dz_inc < -dz_max: dz_inc = -dz_max
+	    if dz_inc > dz_max: dz_inc = dz_max
+
+	    if dx_inc < 0 and dx_inc > -dx_min: dx_inc = -dx_min
+	    if dx_inc > 0 and dx_inc < dx_min: dx_inc = dx_min
+	    if dy_inc < 0 and dy_inc > -dy_min: dy_inc = -dy_min
+	    if dy_inc > 0 and dy_inc < dy_min: dy_inc = dy_min
+	    if dz_inc < 0 and dz_inc > -dz_min: dz_inc = -dz_min
+	    if dz_inc > 0 and dz_inc < dz_min: dz_inc = dz_min
+
+	    self.targ_coords[0] = self.targ_coords[0] + dx_inc
+	    self.targ_coords[1] = self.targ_coords[1] + dy_inc
+	    self.targ_coords[2] = self.targ_coords[2] + dz_inc
+	    rospy.loginfo(f"Received World Coordinates: X={x_world:.2f} cm, Y={y_world:.2f} cm, Z={z_world:.2f} cm")
+		
 	def odom_callback(self, data):
 
 	    self.r_pos = [data.pose.pose.position.x, data.pose.pose.position.y]
@@ -114,19 +154,27 @@ class POCont:
 		#Do nothing
 	    x = 0
 
-	def cam_orient(self, current_pose, ox, oy, kpx, kpy):
+	def cam_orient(self, current_pose, ox, oy, oz, kpx, kpy, kpz):
+		#XY plane
 	    dx = ox - current_pose.pose.pose.position.x
 	    dy = oy - current_pose.pose.pose.position.y
-	    desired_heading = math.atan2(-dy, -dx) - (math.pi*0.5)
+	    desired_heading = math.atan2(-dy, -dx) - (math.pi*0.5)#-dy, -dx
+
+	    #print("dx, dy, des_heading: ", dx, dy, desired_heading, math.atan2(-dy, -dx))
 
 	    cur_or = current_pose.pose.pose.orientation.z 
 	    if cur_or < 0:
 	    	xx = 0
 	    	#also alter the z direction
+	    #print("cur_or: ", cur_or)
+
+	    #print("hd_comp: ", desired_heading, (cur_or * math.pi), (math.radians(180)))
 
 	    heading_error_gen = desired_heading - (cur_or * math.pi) - (math.radians(180))
 	    heading_error = desired_heading - (cur_or * math.pi) - (math.radians(self.r_theta_cam[0]))
 	    
+	    #print("head_er_gem, head_er: ", heading_error_gen, heading_error)
+
 	    #Correct orientation of robot to fit within -pi to pi
 	    if (True):#10000
 	    	if heading_error > math.pi:
@@ -147,6 +195,8 @@ class POCont:
 	    
 	    heading_error = -heading_error
 	    heading_error_gen = -heading_error_gen
+
+	    #print("FIXED: head_er_gem, head_er: ", heading_error_gen, heading_error)
 	    
 	    cex = ((kpx * heading_error)/math.pi + 3.0)
 	    if (1.0 - (heading_error_gen / math.pi) > 0 and 1.0 - (heading_error_gen / math.pi) <= 1.0):
@@ -155,6 +205,71 @@ class POCont:
 	    else:
 	    	truecx = 3.0 - (1.0 + (heading_error_gen / math.pi))
 	    	truecy = 3.0
+	    cey = ((kpy * 0)/math.pi + 3.0)
+
+
+	    #dz = oz - current_pose.pose.pose.position.z
+	    #truecy = 2.0 + 0.5*(dz/30)
+	    #if truecy < 2.0: truecy = 2.0
+
+	    #XZ plane
+	    dx = ox - current_pose.pose.pose.position.x
+	    dz = oz - current_pose.pose.pose.position.z
+	    desired_heading = math.atan2(dy, -dz) - (math.pi*0.5)#-dy, -dx
+
+	    #print("dx, dz, des_heading: ", dx, dz, desired_heading, math.atan2(-dz, -dx))
+
+	    cur_or = ((self.cam_pose[1] - 2.0)) #current_pose.pose.pose.orientation.z 
+	    if cur_or < 0:
+	    	xx = 0
+	    	#also alter the z direction
+	    print("cur_or: ", cur_or)
+
+	    #print("hd_comp: ", desired_heading, (cur_or * math.pi), (math.radians(180)))
+
+	    heading_error_gen = desired_heading - (cur_or * math.pi) - (math.radians(180))
+	    heading_error = desired_heading - (cur_or * math.pi) - (math.radians(self.r_theta_cam[0]))
+	    
+	    #print("head_er_gem, head_er: ", heading_error_gen, heading_error)
+
+	    #Correct orientation of robot to fit within -pi to pi
+	    if (True):#10000
+	    	if heading_error > math.pi:
+	    		heading_error -= 2 * math.pi
+	    	elif heading_error < -math.pi:
+	    		heading_error += 2 * math.pi
+
+	    if (True):#10000
+	    	if heading_error_gen > math.pi:
+	    		heading_error_gen -= 2 * math.pi
+	    	if heading_error_gen < -math.pi:
+	    		heading_error_gen += 2 * math.pi
+	    if (True):#10000
+	    	if heading_error_gen > math.pi:
+	    		heading_error_gen -= 2 * math.pi
+	    	if heading_error_gen < -math.pi:
+	    		heading_error_gen += 2 * math.pi
+	    
+	    heading_error = -heading_error
+	    heading_error_gen = -heading_error_gen
+
+	    #print("FIXED: head_er_gem, head_er: ", heading_error_gen, heading_error)
+	    
+	    cex = ((kpx * heading_error)/math.pi + 3.0)
+	    if (1.0 - (heading_error_gen / math.pi) > 0 and 1.0 - (heading_error_gen / math.pi) <= 1.0):
+	    	truecy = abs((3.0 - (heading_error_gen / math.pi) + (self.cam_pose[1] - 2.0)) - 3.0) + 2.0
+	    	#truecy = 2.0 + (heading_error_gen / math.pi)
+	    	#if truecy < 2.0: truecy = 2.0
+	    	#truecy = 2.0
+	    elif 1.0 - (heading_error_gen / math.pi) != 1.0 :
+	    	print("overextend")
+	    	truecy = (abs(abs((3.0 - (heading_error_gen / math.pi) + (self.cam_pose[1] - 2.0)) - 3.0) + 2.0) - 3.0) + 2.0
+	    	print("DESIRED: ", truecy)
+	    	#truecy = 2.0#-(1.0 + (heading_error_gen / math.pi) / 5) + (self.cam_pose[1])
+	    	#truecy = -(1.0 + (heading_error_gen / math.pi) / 5) + (self.cam_pose[1])
+	    	#truecy = 2.0 + (heading_error_gen / math.pi)#+ (1.0 + (heading_error_gen / math.pi))
+	    	if truecy < 2.0: truecy = 2.0
+	    	#truecy = 3.0
 	    cey = ((kpy * 0)/math.pi + 3.0)
 
 	    return truecx, truecy
@@ -289,6 +404,7 @@ class POCont:
 			#cam heading gains
 			kpx = 1.0
 			kpy = 1.0
+			kpz = 1.0
 			#print("time_gap: ", time_since_last_receive)
 
 			if time_since_last_receive.to_sec() > 1.0 and time_since_last_receive.to_sec() < 2.0:
@@ -411,7 +527,53 @@ class POCont:
 				#No waypoint commands, Idle state
 				print("waiting")
 				if (self.has_target or True):
-					camx, camy = self.cam_orient(fixed_odom, 0, 1, kpx, kpy)
+					# Assuming you have the camera pitch angle in radians
+					theta_pitch =  -math.pi + (self.cam_pose[1] - 2.0 * (math.pi))
+
+					# Assuming you have the camera position in the world frame
+					camera_position = [fixed_odom.pose.pose.position.x, fixed_odom.pose.pose.position.y, fixed_odom.pose.pose.position.z]
+
+					# Object coordinates in the camera frame
+					object_coordinates_cam = [self.targ_coords[0], self.targ_coords[1]*4.0, self.targ_coords[2]]
+
+					# Define the rotation matrix for pitch
+					"""
+					R_pitch = np.array([[1, 0, 0],
+					                    [0, np.cos(theta_pitch), -np.sin(theta_pitch)],
+					                    [0, np.sin(theta_pitch), np.cos(theta_pitch)]])
+					"""
+					"""
+					R_pitch = np.array([[np.cos(theta_pitch), 0, np.sin(theta_pitch)],
+					                    [0, 1, 0],
+					                    [-np.sin(theta_pitch), 0, np.cos(theta_pitch)]])
+					"""
+
+					R_pitch = np.array([[np.cos(theta_pitch), -np.sin(theta_pitch), 0],
+					                    [np.sin(theta_pitch), np.cos(theta_pitch), 0],
+					                    [0, 0, 1]])
+					
+
+					# Transform object coordinates to the world frame
+					object_coordinates_world = np.dot(R_pitch, object_coordinates_cam)
+
+					# Adjust for camera position
+					object_coordinates_world += camera_position
+					#print("theta, cam_pos: ", theta_pitch, camera_position)
+					#print("obj_cam: ", object_coordinates_cam)
+					#print("obj_world: ", object_coordinates_world)
+
+					dumx = self.targ_coords[0] #object_coordinates_world[0] #fixed_odom.pose.pose.position.x + object_coordinates_world[0]
+					dumy = self.targ_coords[1]*4.0# object_coordinates_world[1] #fixed_odom.pose.pose.position.y + object_coordinates_world[1]
+					dumz = object_coordinates_world[2] #fixed_odom.pose.pose.position.z + object_coordinates_world[2]
+					
+					print("dumyCORDS: ", [dumx, dumy, dumz])
+
+					camx, camy = self.cam_orient(fixed_odom, dumx, dumy, dumz, kpx, kpy, kpz)
+					print("camx:", camx, ", camy:", camy )
+					#camx = 2.5
+					#camy = 2.0
+					self.cam_pose = [camx, camy]
+				
 				else:
 					dumx = fixed_odom.pose.pose.position.x + 10*math.cos(scan_dir)
 					dumy = fixed_odom.pose.pose.position.y + 10*math.sin(scan_dir)
