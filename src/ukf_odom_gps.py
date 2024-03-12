@@ -148,12 +148,16 @@ class UkfLocalizationNode:
                 gps_orientation = self.last_gps_msg.pose.orientation
                 camera_orientation = self.last_odom_msg.pose.pose.orientation
 
+                #new_q = gps_orientation + (gps_orientation - camera_orientation) * (self.reori / 20)
+
                 gps_orientation = np.array([gps_orientation.x, gps_orientation.y, gps_orientation.z, gps_orientation.w])
                 camera_orientation = np.array([camera_orientation.x, camera_orientation.y, camera_orientation.z, camera_orientation.w])
 
                 # Calculate the orientation difference
                 orientation_difference = quaternion_multiply(gps_orientation, quaternion_inverse(camera_orientation))
                 print(orientation_difference)
+
+                #new_q = np.array([new_q.x, new_q.y, new_q.z, new_q.w])
 
                 """
                 # Calculate the differences in each component
@@ -189,14 +193,23 @@ class UkfLocalizationNode:
                 #self.transform.transform.rotation = Quaternion(*rot1)
                 self.transform.transform.rotation = geometry_msgs.msg.Quaternion(*gps_orientation)"""
                 
+                """
+                self.transform = TransformStamped()
+                self.transform.header.frame_id = 'map'
+                self.transform.child_frame_id = 'base_link'
+                self.transform.transform.rotation.x = new_q[0]
+                self.transform.transform.rotation.y = new_q[1]
+                self.transform.transform.rotation.z = new_q[2]
+                self.transform.transform.rotation.w = new_q[3]"""
+
                 #"""
                 self.transform = TransformStamped()
                 self.transform.header.frame_id = 'map'
                 self.transform.child_frame_id = 'base_link'
-                self.transform.transform.rotation.x = orientation_difference[0]# * (self.reori / 20)
-                self.transform.transform.rotation.y = orientation_difference[1]# * (self.reori / 20)
-                self.transform.transform.rotation.z = orientation_difference[2]# * (self.reori / 20)
-                self.transform.transform.rotation.w = orientation_difference[3]# * (self.reori / 20)#"""
+                self.transform.transform.rotation.x = orientation_difference[0]
+                self.transform.transform.rotation.y = orientation_difference[1]
+                self.transform.transform.rotation.z = orientation_difference[2]
+                self.transform.transform.rotation.w = orientation_difference[3]#"""
 
                 #transformed_quaternion = do_transform_quaternion(quaternion, transform_stamped)
 

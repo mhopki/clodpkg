@@ -444,7 +444,7 @@ for i in range(len(smoothed_path) - 1):
 
 o_off_x = 0
 o_off_y = 0
-shape_t = 0
+shape_t = 1
 if shape_t == 0:
     true_path = []
     true_path.append(Node(3.0,0))
@@ -479,7 +479,7 @@ if shape_t == 2:
     true_path.append(Node(radc * np.cos(1*np.pi),radc * np.sin(1*np.pi)))"""
 
 #
-if (True and False):
+if (False):
     way_path = []
     way_out = PoseStamped()
     way_out.pose.position.x = true_path[0].x + o_off_x
