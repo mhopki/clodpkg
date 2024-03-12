@@ -18,8 +18,8 @@ Y_MIN, Y_MAX = 0, 7
 
 
 # Set up the environment
-rospy.init_node('shapess', anonymous=True)
-global way_pub
+rospy.init_node('shapes', anonymous=True)
+#global way_pub
 way_pub = rospy.Publisher('/waypoints', PoseStamped, queue_size=100)
 
 true_path = []
@@ -45,7 +45,7 @@ if (path_good == True):
     print("publish")
     #print(way_out)
     way_pub.publish(way_out)
-    #print(way_pub.publish(way_out))
+    print(way_pub.publish(way_out))
     #way_path.append(Node(true_path[0,0], true_path[0,1]))
 
     last_x = true_path[0][0] + o_off_x

@@ -93,21 +93,27 @@ class POCont:
 		self.des_swait = 0
 		self.g_thres = 0.3 #threshold of goal waypoint
 
+		#BASE VALUES FOR TRACKING TEST!!!
+		self.devx = None
+		self.devy = None
+		self.devz = None
+		self.persist = 100
+
 	def world_coordinates_callback(self, data):
 	    x_world, y_world, z_world = data.data
 	    dx = x_world - self.targ_coords[0]
 	    dy = y_world - self.targ_coords[1]
 	    dz = z_world - self.targ_coords[2]
-	    dx_inc = (dx * 0.1)
-	    dy_inc = (dy * 0.1)
-	    dz_inc = (dz * 0.05)
+	    dx_inc = (((dx**2)*(dx/abs(dx))) * 0.02)
+	    dy_inc = (((dy**2)*(dy/abs(dy))) * 0.02)
+	    dz_inc = (((dz**2)*(dz/abs(dz))) * 0.01)
 	    dx_max = 2.0
 	    dy_max = 2.0
 	    dz_max = 1.0
 
-	    dx_min = 0.01
-	    dy_min = 0.01
-	    dz_min = 0.01
+	    dx_min = 0.001
+	    dy_min = 0.001
+	    dz_min = 0.001
 	    if dx_inc < -dx_max: dx_inc = -dx_max
 	    if dx_inc > dx_max: dx_inc = dx_max
 	    if dy_inc < -dy_max: dy_inc = -dy_max
@@ -223,7 +229,7 @@ class POCont:
 	    if cur_or < 0:
 	    	xx = 0
 	    	#also alter the z direction
-	    print("cur_or: ", cur_or)
+	    #print("cur_or: ", cur_or)
 
 	    #print("hd_comp: ", desired_heading, (cur_or * math.pi), (math.radians(180)))
 
@@ -262,9 +268,9 @@ class POCont:
 	    	#if truecy < 2.0: truecy = 2.0
 	    	#truecy = 2.0
 	    elif 1.0 - (heading_error_gen / math.pi) != 1.0 :
-	    	print("overextend")
+	    	#print("overextend")
 	    	truecy = (abs(abs((3.0 - (heading_error_gen / math.pi) + (self.cam_pose[1] - 2.0)) - 3.0) + 2.0) - 3.0) + 2.0
-	    	print("DESIRED: ", truecy)
+	    	#print("DESIRED: ", truecy)
 	    	#truecy = 2.0#-(1.0 + (heading_error_gen / math.pi) / 5) + (self.cam_pose[1])
 	    	#truecy = -(1.0 + (heading_error_gen / math.pi) / 5) + (self.cam_pose[1])
 	    	#truecy = 2.0 + (heading_error_gen / math.pi)#+ (1.0 + (heading_error_gen / math.pi))
@@ -340,10 +346,10 @@ class POCont:
 	    
 	    return desired_heading
 
-	def calculate_desired_cmd(self, current_pose, waypoint_pose, kp_linear, kp_angular):
+	def calculate_desired_cmd(self, current_pose, waypoint_pose, kp_linear, kp_angular, targ_vel):
         # Calculate desired heading
 	    desired_heading = self.calculate_desired_heading(current_pose, waypoint_pose)
-	    targ_vel = 0.4
+	    #targ_vel = 0.4
 	    
 	    # Calculate the difference between current and desired heading
 	    heading_error = desired_heading - (current_pose.pose.pose.orientation.z * math.pi)
@@ -389,6 +395,7 @@ class POCont:
 		scan_dir = 0
 		lin_out = 0
 		targ_vel = 0.4
+
 		while not rospy.is_shutdown():
 			time_since_last_receive = rospy.Time.now() - self.last_received_time
 
@@ -398,7 +405,7 @@ class POCont:
 			fixed_odom.pose.pose.orientation.z = self.r_theta #r_theta is robot orientation
 
 			#motion gains
-			lingain = 1.0 * 0.01#3.0 * 6#3.0#1.5
+			lingain = 1.0 * 0.002#0.01#3.0 * 6#3.0#1.5
 			anggain = 8.0 * 20#8.0#5.0#3.0
 			
 			#cam heading gains
@@ -431,14 +438,14 @@ class POCont:
 				#Robot is travelling
 				dist = self.calculate_distance(self.r_pos[0], self.r_pos[1], self.g_loc[0], self.g_loc[1])
 
-				lin, ang = self.calculate_desired_cmd(fixed_odom, self.g_odom, lingain, anggain)
+				lin, ang = self.calculate_desired_cmd(fixed_odom, self.g_odom, lingain, anggain, targ_vel)
 				scan_dir = 0
 				if (self.has_target or True):
-					camx, camy = self.cam_orient(fixed_odom, self.g_loc[0], self.g_loc[1], kpx, kpy)
+					camx, camy = self.cam_orient(fixed_odom, self.g_loc[0], self.g_loc[1], fixed_odom.pose.pose.position.z + 0, kpx, kpy, kpz)
 				else:
 					dumx = fixed_odom.pose.pose.position.x + 10*math.cos(scan_dir + self.r_theta)
 					dumy = fixed_odom.pose.pose.position.y + 10*math.sin(scan_dir + self.r_theta)
-					camx, camy = self.cam_orient(fixed_odom, dumx, dumy, kpx, kpy)
+					camx, camy = self.cam_orient(fixed_odom, dumx, dumy, fixed_odom.pose.pose.position.z + 0, kpx, kpy, kpz)
 					scan_dir += 0.001
 					if scan_dir > math.pi:
 						scan_dir -= 2 * math.pi
@@ -504,6 +511,7 @@ class POCont:
 						self.last_received_time = rospy.Time.now()
 						self.joy_msg.axes[r_atc["ABS_RZ"]] = 0
 						self.joy_pub.publish(self.joy_msg)
+						self.g_loc = [-10, -10]
 						continue
 						nx = random.uniform(-1.0, 1.0)
 						ny = random.uniform(3.0, 6.0)
@@ -527,6 +535,7 @@ class POCont:
 				#No waypoint commands, Idle state
 				print("waiting")
 				if (self.has_target or True):
+					tracking_test = True
 					# Assuming you have the camera pitch angle in radians
 					theta_pitch =  -math.pi + (self.cam_pose[1] - 2.0 * (math.pi))
 
@@ -534,7 +543,7 @@ class POCont:
 					camera_position = [fixed_odom.pose.pose.position.x, fixed_odom.pose.pose.position.y, fixed_odom.pose.pose.position.z]
 
 					# Object coordinates in the camera frame
-					object_coordinates_cam = [self.targ_coords[0], self.targ_coords[1]*4.0, self.targ_coords[2]]
+					object_coordinates_cam = [(self.targ_coords[0]/100), (self.targ_coords[1]/100)*4.0, (self.targ_coords[2]/100)]
 
 					# Define the rotation matrix for pitch
 					"""
@@ -562,9 +571,56 @@ class POCont:
 					#print("obj_cam: ", object_coordinates_cam)
 					#print("obj_world: ", object_coordinates_world)
 
-					dumx = self.targ_coords[0] #object_coordinates_world[0] #fixed_odom.pose.pose.position.x + object_coordinates_world[0]
-					dumy = self.targ_coords[1]*4.0# object_coordinates_world[1] #fixed_odom.pose.pose.position.y + object_coordinates_world[1]
-					dumz = object_coordinates_world[2] #fixed_odom.pose.pose.position.z + object_coordinates_world[2]
+					if (tracking_test == True):
+						dumx = fixed_odom.pose.pose.position.x + (self.targ_coords[0]/100) #object_coordinates_world[0] #fixed_odom.pose.pose.position.x + object_coordinates_world[0]
+						dumy = fixed_odom.pose.pose.position.y + (self.targ_coords[1]/100)*4.0# object_coordinates_world[1] #fixed_odom.pose.pose.position.y + object_coordinates_world[1]
+						dumz = object_coordinates_world[2] #fixed_odom.pose.pose.position.z + object_coordinates_world[2]
+						if self.devx == None:
+							self.devx = dumx
+							self.devy = dumy
+							self.devz = dumz
+						else:
+							deviant = (abs(self.devx - dumx) + abs(self.devx - dumx) + abs(self.devx - dumx))/3
+							print("DEVIANT: ", deviant, self.devx, dumx)
+							self.devx = dumx
+							self.devy = dumy
+							self.devz = dumz
+							if (deviant < 0.5):
+								if self.persist <= 0:
+									eyeg = []
+									eyeg = PoseStamped()
+									direction_x = fixed_odom.pose.pose.position.x - (fixed_odom.pose.pose.position.x + (dumx/100))
+									direction_y = fixed_odom.pose.pose.position.y - (fixed_odom.pose.pose.position.x + (dumy/100))
+									distance = math.sqrt(direction_x ** 2 + direction_y ** 2)
+									if distance != 0:
+										direction_x /= distance
+										direction_y /= distance
+									eyeg.pose.position.x = fixed_odom.pose.pose.position.x + (dumx/100) + ((dumz/100) / 2.0) * direction_x
+									eyeg.pose.position.y = (fixed_odom.pose.pose.position.y + (dumy/100) + ((dumz/100) / 2.0) * direction_y)
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									#self.waypoints.append(eyeg)
+									self.persist = 100
+								else:
+									self.persist -= 1
+							else:
+								self.persist = 100
+
+					else:
+						#BASIC
+						dumx = fixed_odom.pose.pose.position.x + 10
+						dumy = fixed_odom.pose.pose.position.y + 10
+						dumz = fixed_odom.pose.pose.position.z + 0
 					
 					print("dumyCORDS: ", [dumx, dumy, dumz])
 
@@ -577,7 +633,7 @@ class POCont:
 				else:
 					dumx = fixed_odom.pose.pose.position.x + 10*math.cos(scan_dir)
 					dumy = fixed_odom.pose.pose.position.y + 10*math.sin(scan_dir)
-					camx, camy = self.cam_orient(fixed_odom, dumx, dumy, kpx, kpy)
+					camx, camy = self.cam_orient(fixed_odom, fixed_odom.pose.pose.position.x + (dumx/100), fixed_odom.pose.pose.position.y + (dumy/100), fixed_odom.pose.pose.position.z + 0, kpx, kpy, kpz)
 					scan_dir += 0.001
 					if scan_dir > math.pi:
 						scan_dir -= 2 * math.pi

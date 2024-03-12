@@ -400,6 +400,8 @@ for node in true_path:
         plt.plot([node.x, node.parent.x], [node.y, node.parent.y], 'g-')
 """
 
+#PLOT TRUE PATH
+"""
 c_head = 0
 for i in range(len(true_path) - 1):
     heading = calculate_angle([true_path[i].x, true_path[i].y], [true_path[i+1].x, true_path[i+1].y])
@@ -415,6 +417,7 @@ for i in range(len(true_path) - 1):
     #else:
     #    print("heading: ", calculate_angle([true_path[i].x, true_path[i].y], [true_path[i+1].x, true_path[i+1].y]))
     plt.plot([true_path[i+1].x, true_path[i].x], [true_path[i+1].y, true_path[i].y], 'g-')
+"""
 
 #smoothed_path = smooth_path(path)
 
@@ -442,30 +445,33 @@ for i in range(len(smoothed_path) - 1):
 
 #rad_path = rad_curve_path(path)
 
-o_off_x = 0
-o_off_y = 0
-shape_t = 1
+o_off_x = 0.2
+o_off_y = 0.2
+shape_t = 3
 if shape_t == 0:
     true_path = []
-    true_path.append(Node(3.0,0))
+    true_path.append(Node(0,0))
+    #true_path.append(Node(1.5,0))
+    true_path.append(Node(3.0,0.0))
 
 if shape_t == 1:
     true_path = []
-    true_path.append(Node(2.5,0))
+    true_path.append(Node(0,0))
+    true_path.append(Node(0.0,2.5))
     true_path.append(Node(2.5,2.5))
-    true_path.append(Node(0,2.5))
+    true_path.append(Node(2.5,0.0))
     true_path.append(Node(0,0))
 
 if shape_t == 2:
     true_path = []
     radc = 2.5/2
-    o_off_x = radc
-    o_off_y = radc
-    radc = 2.5/2
+    o_off_x = radc * 1.5
+    o_off_y = radc * 1.5
+    #radc = 2.5/2
     ang = np.linspace(0,2*np.pi, 16)
     for i in range(12,16):
         true_path.append(Node(radc * np.cos(ang[i]),radc * np.sin(ang[i])))
-    for i in range(0,12):
+    for i in range(0,13):
         true_path.append(Node(radc * np.cos(ang[i]),radc * np.sin(ang[i])))
 
     """
@@ -477,6 +483,15 @@ if shape_t == 2:
     true_path.append(Node(radc * np.cos(0.5*np.pi),radc * np.sin(0.5*np.pi)))
     true_path.append(Node(radc * np.cos(0.75*np.pi),radc * np.sin(0.75*np.pi)))
     true_path.append(Node(radc * np.cos(1*np.pi),radc * np.sin(1*np.pi)))"""
+
+if shape_t == 3:
+    #small square
+    true_path = []
+    true_path.append(Node(0,0))
+    true_path.append(Node(0.0,1.5))
+    true_path.append(Node(1.5,1.5))
+    true_path.append(Node(1.5,0.0))
+    true_path.append(Node(0,0))
 
 #
 if (False):
@@ -526,6 +541,7 @@ if (True):
     way_out.pose.position.x = true_path[0].x + o_off_x
     way_out.pose.position.y = true_path[0].y + o_off_y
     way_pub.publish(way_out)
+    #print("AYO: ", way_pub.publish(way_out))
     way_path.append(Node(true_path[0].x, true_path[0].y))
 
     last_x = true_path[0].x + o_off_x
@@ -537,6 +553,7 @@ if (True):
             way_out.pose.position.y = true_path[i].y + o_off_y
             way_pub.publish(way_out)
             way_path.append(Node(true_path[i].x, true_path[i].y))
+            #plt.plot([last_x, ])
             #plt.plot([last_x, smoothed_path[i].x - 2], [last_y, smoothed_path[i].y + 2], 'y-')
             last_x = true_path[i].x + o_off_x
             last_y = true_path[i].y + o_off_y
@@ -547,8 +564,8 @@ if (True):
     way_pub.publish(way_out)
     way_path.append(Node(true_path[-1].x, true_path[-1].y))
     #plt.plot([last_x, smoothed_path[i].x - 2], [last_y, smoothed_path[i].y + 2], 'y-')
-    last_x = true_path[i].x + o_off_x
-    last_y = true_path[i].y + o_off_y
+    last_x = true_path[-1].x + o_off_x
+    last_y = true_path[-1].y + o_off_y
 
     for node in way_path:
         xx = 0
@@ -556,7 +573,7 @@ if (True):
 
     for i in range(len(way_path) - 1):
         xxx = 0
-        plt.plot([way_path[i].x, way_path[i + 1].x], [way_path[i].y, way_path[i + 1].y], 'r-')
+        plt.plot([way_path[i].x+o_off_x, way_path[i + 1].x+o_off_x], [way_path[i].y+o_off_y, way_path[i + 1].y+o_off_y], 'r-')
 
 #wayp smooth
 if (False):
@@ -610,7 +627,7 @@ if (False):
     way_out.pose.position.y = smoothed_path[-1].y + 2
     way_pub.publish(way_out)
 
-"""
+#"""
 plt.scatter([node.x for node in path], [node.y for node in path], color='blue', label='Path')
 plt.scatter([node.x for node in path], [node.y for node in path], color='yellow', label='Path(Smooth)')
 plt.scatter(start.x, start.y, color='green', label='Start')
@@ -619,10 +636,11 @@ plt.scatter(0,0, color='gray', label='Obstacles')
 plt.legend()
 plt.xlabel('X')
 plt.ylabel('Y')
-plt.xlim(X_MIN, X_MAX)
-plt.ylim(Y_MIN, Y_MAX)
+largest_dim = max(X_MAX,Y_MAX)
+plt.xlim(X_MIN, largest_dim)
+plt.ylim(Y_MIN, largest_dim)
 plt.grid()
-plt.show()"""
+plt.show()#"""
 
 #print("start: ", start.x, start.y)
 #for node in path:

@@ -437,8 +437,8 @@ for obstacle_i in obstacles:
     for edge in obstacle_i['edges']:
         obst_edges = plt.plot([edge[0].x, edge[1].x], [edge[0].y, edge[1].y], color='gray')
 
-for i in range(len(smoothed_path) - 1):
-    xx = 0
+#for i in range(len(smoothed_path) - 1):
+    #xx = 0
     #plt.plot([smoothed_path[i].x, smoothed_path[i + 1].x], [smoothed_path[i].y, smoothed_path[i + 1].y], 'y-')
 
 #rad_path = rad_curve_path(path)
