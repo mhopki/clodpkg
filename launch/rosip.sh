@@ -26,6 +26,11 @@ elif [[ "$my_ip" == "192.168.50.205" ]]; then
         export ROS_IP=192.168.50.205
         #export ROS_MASTER_URI=http://10.103.121.167:11311
         export ROS_MASTER_URI=http://192.168.50.205:11311
+elif [[ "$my_ip" == "192.168.80.171" ]]; then
+        # Set ROS_MASTER_URI
+        export ROS_IP=192.168.80.171
+        #export ROS_MASTER_URI=http://10.103.121.167:11311
+        export ROS_MASTER_URI=http://192.168.80.171:11311
 fi
 
 
