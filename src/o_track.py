@@ -109,7 +109,7 @@ class POCont:
 	    dz_inc = (((dz**2)*(dz/abs(dz))) * 0.01)
 	    dx_max = 2.0
 	    dy_max = 2.0
-	    dz_max = 1.0
+	    dz_max = 1.0#half
 
 	    dx_min = 0.001
 	    dy_min = 0.001
