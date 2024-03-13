@@ -48,7 +48,7 @@ r_atc = {value: key for key, value in axis_codes.items()}
 class POCont:
 	def __init__(self):
 		rospy.init_node('po_controller', anonymous=True)
-		self.odom_sub_topic = '/camera/odom/sample'#'fused_localization'#'/camera/odom/sample'
+		self.odom_sub_topic = 'fused_localization'#'/camera/odom/sample'#'fused_localization'#'/camera/odom/sample'
 		self.joy_pub = rospy.Publisher('/joy', Joy, queue_size=100)
 		#self.odom_sub = rospy.Subscriber('/vicon/BEAST/odom', Odometry, self.odom_callback, queue_size=1, tcp_nodelay=True)
 		self.odom_sub = rospy.Subscriber(self.odom_sub_topic, Odometry, self.odom_callback_cam, queue_size=1, tcp_nodelay=True)
@@ -394,7 +394,7 @@ class POCont:
 		# Publish the Joy message repeatedly
 		scan_dir = 0
 		lin_out = 0
-		targ_vel = 0.4
+		targ_vel = 0.2
 
 		while not rospy.is_shutdown():
 			time_since_last_receive = rospy.Time.now() - self.last_received_time
@@ -424,7 +424,7 @@ class POCont:
 				#print("timeout")
 				x = 0
 
-			if (self.r_pos[0] < -9.0 or self.r_pos[0] > 9.0 or self.r_pos[1] > 9 or self.r_pos[1] < -2.0):
+			if (False and (self.r_pos[0] < -9.0 or self.r_pos[0] > 9.0 or self.r_pos[1] > 9 or self.r_pos[1] < -2.0)):
 				#-3.0, 3.0, 9, 0.5
 				#OUTTA BOUNDS!!!
 				#Robot is out of bounds, send STOP commands to robot
@@ -535,7 +535,7 @@ class POCont:
 				#No waypoint commands, Idle state
 				print("waiting")
 				if (self.has_target or True):
-					tracking_test = True
+					tracking_test = False
 					# Assuming you have the camera pitch angle in radians
 					theta_pitch =  -math.pi + (self.cam_pose[1] - 2.0 * (math.pi))
 
