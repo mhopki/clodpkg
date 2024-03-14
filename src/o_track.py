@@ -394,7 +394,7 @@ class POCont:
 		# Publish the Joy message repeatedly
 		scan_dir = 0
 		lin_out = 0
-		targ_vel = 0.2
+		targ_vel = 0.1
 
 		while not rospy.is_shutdown():
 			time_since_last_receive = rospy.Time.now() - self.last_received_time

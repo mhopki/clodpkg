@@ -53,7 +53,7 @@ class UkfLocalizationNode:
         self.first_gps_msg = None  # Initialize first_gps_msg here
 
         self.translated = False
-        self.reori = 20
+        self.reori = 10
         #print("init has run")
 
     def odom_callback(self, odom_msg):
@@ -99,16 +99,16 @@ class UkfLocalizationNode:
         if self.last_gps_msg != None and self.first_gps_msg != None:
             stack = True
             # Calculate the orientation quaternion from the last and current positions
-            delta_x = (easting - self.first_gps_msg.pose.position.x) - self.last_gps_msg.pose.pose.position.x
-            delta_y = (northing - self.first_gps_msg.pose.position.y) - self.last_gps_msg.pose.pose.position.y
-            delta_z = (gps_msg.altitude - self.first_gps_msg.pose.position.z) - self.last_gps_msg.pose.pose.position.z
+            delta_x = self.last_gps_msg.pose.pose.position.x - (easting - self.first_gps_msg.pose.position.x)
+            delta_y = self.last_gps_msg.pose.pose.position.y - (northing - self.first_gps_msg.pose.position.y)
+            delta_z = self.last_gps_msg.pose.pose.position.z - (gps_msg.altitude - self.first_gps_msg.pose.position.z)
 
             #delta_x2 = self.last_gps_msg.pose.pose.position.x - pose_stamped.pose.position.x 
             #delta_y2 = self.last_gps_msg.pose.pose.position.y - pose_stamped.pose.position.y
             #delta_z2 = self.last_gps_msg.pose.pose.position.z - pose_stamped.pose.position.z
 
             # Calculate the yaw angle (rotation around the z-axis)
-            yaw_angle = atan2(delta_y, delta_x)
+            yaw_angle = atan2(-delta_y, -delta_x)
 
             # Convert the yaw angle to a quaternion
             quaternion = quaternion_from_euler(0, 0, yaw_angle)
@@ -139,7 +139,7 @@ class UkfLocalizationNode:
 
                 quat_current = np.array([quaternion[0], quaternion[1], quaternion[2], quaternion[3]])
                 quat_last_or = np.array([self.last_gps_msg.pose.pose.orientation.x, self.last_gps_msg.pose.pose.orientation.y, self.last_gps_msg.pose.pose.orientation.z, self.last_gps_msg.pose.pose.orientation.w])
-                delta_quaternion = quaternion_multiply(quat_current, quaternion_inverse(quat_last_or))
+                delta_quaternion = quaternion_multiply(quat_last_or, quaternion_inverse(quat_current))
 
                 new_odom.twist.twist.angular.x = delta_quaternion[0] / time_difference.to_sec()
                 new_odom.twist.twist.angular.y = delta_quaternion[1] / time_difference.to_sec()
@@ -218,6 +218,7 @@ class UkfLocalizationNode:
 
                 # Calculate the orientation difference
                 orientation_difference = quaternion_multiply(gps_orientation, quaternion_inverse(camera_orientation))
+                #orientation_difference = quaternion_multiply(camera_orientation, quaternion_inverse(gps_orientation))
                 print(orientation_difference)
 
                 #new_q = np.array([new_q.x, new_q.y, new_q.z, new_q.w])
@@ -293,9 +294,56 @@ class UkfLocalizationNode:
             # Use Unscented Kalman Filter for state estimation
             points = MerweScaledSigmaPoints(9, alpha=0.1, beta=2.0, kappa=-1.0)
             ukf = UnscentedKalmanFilter(dim_x=9, dim_z=9, dt=1.0, fx=self.fx, hx=self.hx, points=points)
+            ukf_twist = np.array([ukf.x[6], ukf.x[7], 0])
+            ukf_twist_ang = np.array([0,0, ukf.x[8]])
+
+            """
+            # Assuming you want to rotate by 90 degrees around the z-axis
+            angle = np.radians(105)
+            rotation_quaternion = tf3d.quaternions.axangle2quat([0, 0, 1], angle)
+
+            angle2 = np.radians(0)
+            rotation_quaternion2 = tf3d.quaternions.axangle2quat([0, 0, 1], angle2)
+            """
+
+            transf_ar = np.array([self.transform.transform.rotation.w, self.transform.transform.rotation.x, self.transform.transform.rotation.y, self.transform.transform.rotation.z])
+            #fused_ar = quaternion_multiply(odom_orient_ar, transf_ar)
+            transf_ar_tf = np.array([self.transform.transform.rotation.x, self.transform.transform.rotation.y, self.transform.transform.rotation.z, self.transform.transform.rotation.w])
+
+            #angle = np.radians(105)
+            #rotation_quaternion = tf3d.quaternions.axangle2quat([0, 0, 1], angle)
+
+            # Convert quaternion to rotation matrix
+            #rotation_matrix = tf3d.quaternions.quat2mat(rotation_quaternion)
+            rotation_matrix = tf3d.quaternions.quat2mat(transf_ar) #needs w first
+            rotation_matrix_T = rotation_matrix.T#tf3d.quaternions.quat2mat(transf_ar)
+            #print(rotation_matrix)
+            #print(transf_ar)
+
+            """
+            into_position = np.array([odom_position.x, odom_position.y, 0])
+            into_orientation = np.array([odom_orientation.x, odom_orientation.y, odom_orientation.z, odom_orientation.w])
+            into_twist = np.array([odom_velocity.x, odom_velocity.y, 0])
+            into_twist_ang = np.array([0,0, odom_angvelocity.z])
+            """
+
+            into_position = np.array([gps_position.x, gps_position.y, 0])
+            into_orientation = np.array([gps_orientation.x, gps_orientation.y, gps_orientation.z, gps_orientation.w])
+            into_twist = np.array([gps_velocity.x, gps_velocity.y, 0])
+            into_twist_ang = np.array([0,0, odom_angvelocity.z])
+
+            transformed_position = rotation_matrix.T.dot(into_position)#ukf_position#rotation_matrix.dot(ukf_position)# + translation_vector
+            transformed_orientation = quaternion_multiply(into_orientation, quaternion_inverse(transf_ar_tf))#rotation_matrix.dot(into_orientation)
+            #transformed_orientation = quaternion_multiply(transf_ar_tf, quaternion_inverse(into_orientation))
+            transformed_twist = rotation_matrix.dot(into_twist)
+            transformed_twist_ang = rotation_matrix.dot(into_twist_ang)
+            print(into_twist, transformed_twist)
+            print("POS: ", into_position, transformed_position)
+
 
             # Initialize state and covariance
             ukf.x = np.array([odom_position.x, odom_position.y, odom_orientation.x, odom_orientation.y, odom_orientation.z, odom_orientation.w, odom_velocity.x, odom_velocity.y, odom_angvelocity.z])
+            #ukf.x = np.array([transformed_position[0], transformed_position[1], transformed_orientation[0], transformed_orientation[1], transformed_orientation[2], transformed_orientation[3], transformed_twist[0], transformed_twist[1], transformed_twist_ang[2]])
             ukf.P *= 1e-2
 
             # Process and measurement noise
@@ -304,7 +352,9 @@ class UkfLocalizationNode:
 
             # Perform filter prediction and update
             ukf.predict()
-            ukf.update([gps_position.x, gps_position.y, gps_orientation.x, gps_orientation.y, gps_orientation.z, gps_orientation.w, gps_velocity.x, gps_velocity.y, gps_angvelocity.z])
+            #ukf.update([gps_position.x, gps_position.y, gps_orientation.x, gps_orientation.y, gps_orientation.z, gps_orientation.w, gps_velocity.x, gps_velocity.y, gps_angvelocity.z])
+            ukf.update([transformed_position[0], transformed_position[1], transformed_orientation[0], transformed_orientation[1], transformed_orientation[2], transformed_orientation[3], transformed_twist[0], transformed_twist[1], transformed_twist_ang[2]])
+
 
             # Create an Odometry message for the fused localization
             fused_localization = Odometry()
@@ -322,9 +372,17 @@ class UkfLocalizationNode:
             #rotation_matrix_T = rotation_matrix.T
 
             ukf_position = np.array([ukf.x[0], ukf.x[1], 0])
+            ukf_orientation = np.array([ukf.x[2], ukf.x[3], ukf.x[4], ukf.x[5]])
             ukf_twist = np.array([ukf.x[6], ukf.x[7], 0])
             ukf_twist_ang = np.array([0,0, ukf.x[8]])
 
+            rotation_matrix_body = tf3d.quaternions.quat2mat([ukf_orientation[3], ukf_orientation[0], ukf_orientation[1], ukf_orientation[2]])
+            #print(rotation_matrix_body)
+            body_twist = rotation_matrix_body.T.dot(ukf_twist)
+            body_twist_ang = rotation_matrix_body.T.dot(ukf_twist_ang)
+            
+
+            """
             # Assuming you want to rotate by 90 degrees around the z-axis
             angle = np.radians(105)
             rotation_quaternion = tf3d.quaternions.axangle2quat([0, 0, 1], angle)
@@ -338,16 +396,21 @@ class UkfLocalizationNode:
             transformed_position = rotation_matrix.dot(ukf_position)#ukf_position#rotation_matrix.dot(ukf_position)# + translation_vector
             transformed_twist = rotation_matrix.dot(ukf_twist)
             transformed_twist_ang = rotation_matrix.dot(ukf_twist_ang)
+            """
 
             # Update the pose from the UKF state
-            fused_localization.pose.pose.position.x = transformed_position[0]#ukf.x[0]
-            fused_localization.pose.pose.position.y = transformed_position[1]#ukf.x[1]
-            fused_localization.twist.twist.linear.x = transformed_twist[0]
-            fused_localization.twist.twist.linear.y = transformed_twist[1]
-            fused_localization.twist.twist.angular.z = transformed_twist_ang[2]
+            fused_localization.pose.pose.position.x = ukf_position[0]#transformed_position[0]#ukf.x[0]
+            fused_localization.pose.pose.position.y = ukf_position[1]#transformed_position[1]#ukf.x[1]
+            fused_localization.twist.twist.linear.x = body_twist[0]#ukf_twist[0]#transformed_twist[0]
+            fused_localization.twist.twist.linear.y = body_twist[1]#ukf_twist[1]#transformed_twist[1]
+            fused_localization.twist.twist.angular.z = body_twist_ang[2]#ukf_twist_ang[2]#transformed_twist_ang[2]
             #fused_localization.pose.pose.position.z = 0
             #fused_localization.twist.twist.linear.z = 0
             #fused_localization.pose.pose.position.z = ukf.x[2]
+            fused_localization.pose.pose.orientation.x = ukf_orientation[0]
+            fused_localization.pose.pose.orientation.y = ukf_orientation[1]
+            fused_localization.pose.pose.orientation.z = ukf_orientation[2]
+            fused_localization.pose.pose.orientation.w = ukf_orientation[3]
 
             #angle_or = np.radians(180)
             #rotation_quaternion_or = tf3d.quaternions.axangle2quat([0, 0, 1], angle_or)
@@ -359,10 +422,14 @@ class UkfLocalizationNode:
             transf_ar = np.array([self.transform.transform.rotation.x, self.transform.transform.rotation.y, self.transform.transform.rotation.z, self.transform.transform.rotation.w])
             fused_ar = quaternion_multiply(odom_orient_ar, transf_ar)"""
 
+
+            """
             fuse_orient_ar = np.array([ukf.x[2], ukf.x[3], ukf.x[4], ukf.x[5]])
             transf_ar = np.array([self.transform.transform.rotation.x, self.transform.transform.rotation.y, self.transform.transform.rotation.z, self.transform.transform.rotation.w])
             fused_ar = quaternion_multiply(fuse_orient_ar, transf_ar)
             fused_ar = quaternion_multiply(fused_ar, rotation_quaternion)
+            """
+
 
             #fused_ar = quaternion_multiply(rotation_quaternion_or, fused_ar)
             #fused_ar = quaternion_multiply(rotation_quaternion_or2, fused_ar)
@@ -372,12 +439,12 @@ class UkfLocalizationNode:
             #fused_localization.pose.pose.orientation = quaternion_multiply(fused_localization.pose.pose.orientation, self.transform.transform.rotation)
             #fused_localization.pose.pose.orientation = self.last_odom_msg.pose.pose.orientation
             
-            #"""
+            """
             fused_localization.pose.pose.orientation.x = fused_ar[0]
             fused_localization.pose.pose.orientation.y = fused_ar[1]
             fused_localization.pose.pose.orientation.z = fused_ar[2]
             fused_localization.pose.pose.orientation.w = fused_ar[3]
-            #"""
+            """
 
             #fused_localization.pose.pose.orientation = fused_localization.pose.pose.orientation.normalize()
 
