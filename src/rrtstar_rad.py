@@ -273,33 +273,90 @@ rospy.init_node('rrt_cont', anonymous=True)
 way_pub = rospy.Publisher('/waypoints', PoseStamped, queue_size=100)
 start = Node(0.2, 0.2)
 goal = Node(3.4, 6)
-obstacles = []
-obstacle = {
-    'x_min': 3,
-    'x_max': 4,
-    'y_min': 0,
-    'y_max': 3,
-    'edges': [
-        (Node(3, 0), Node(3, 3)),  # Top edge
-        (Node(3, 3), Node(4, 3)),  # Top edge
-        (Node(4, 3), Node(4, 0)),  # Top edge
-        (Node(4, 0), Node(3, 0))  # Top edge
-    ]
-}
-obstacles.append(obstacle)
-obstacle = {
-    'x_min': 0.5,
-    'x_max': 1.5,
-    'y_min': 1,
-    'y_max': 7,
-    'edges': [
-        (Node(0.5, 1), Node(0.5, 7)),  # Top edge
-        (Node(0.5, 7), Node(1.5, 7)),  # Top edge
-        (Node(1.5, 7), Node(1.5, 1)),  # Top edge
-        (Node(1.5, 1), Node(0.5, 1))  # Top edge
-    ]
-}
-obstacles.append(obstacle)
+
+decrem = 0 #ORIGINAL POINTS THIS IS CHANGED LATER
+obs_map = 4
+
+if obs_map == 0:
+    start = Node(0.2, 0.2)
+    goal = Node(3.4, 6)
+    obstacles = []
+    obstacle = {
+        'x_min': 3,
+        'x_max': 4,
+        'y_min': 0,
+        'y_max': 3,
+        'edges': [
+            (Node(3, 0), Node(3, 3)),  # Top edge
+            (Node(3, 3), Node(4, 3)),  # Top edge
+            (Node(4, 3), Node(4, 0)),  # Top edge
+            (Node(4, 0), Node(3, 0))  # Top edge
+        ]
+    }
+    obstacles.append(obstacle)
+    obstacle = {
+        'x_min': 0.5,
+        'x_max': 1.5,
+        'y_min': 1,
+        'y_max': 7,
+        'edges': [
+            (Node(0.5, 1), Node(0.5, 7)),  # Top edge
+            (Node(0.5, 7), Node(1.5, 7)),  # Top edge
+            (Node(1.5, 7), Node(1.5, 1)),  # Top edge
+            (Node(1.5, 1), Node(0.5, 1))  # Top edge
+        ]
+    }
+    obstacles.append(obstacle)
+elif obs_map == 1:
+    start = Node(0.2, 0.2)
+    goal = Node(3.4, 6)
+    obstacles = []
+    obstacle = {
+        'x_min': 0,
+        'x_max': 3,
+        'y_min': 2,
+        'y_max': 3,
+        'edges': [
+            (Node(0, 2 + decrem), Node(0 + decrem, 3 - decrem)),  # Top edge
+            (Node(0 + decrem, 3 - decrem), Node(3 - decrem, 3 - decrem)),  # Top edge
+            (Node(3 - decrem, 3 - decrem), Node(3 - decrem, 2 + decrem)),  # Top edge
+            (Node(3 - decrem, 2 + decrem), Node(0 + decrem, 2 + decrem))  # Top edge
+        ]
+    }
+    obstacles.append(obstacle)
+    obstacle = {
+        'x_min': 0.5 + decrem,
+        'x_max': 1.5 - decrem,
+        'y_min': 1 + decrem,
+        'y_max': 7 - decrem,
+        'edges': [
+            (Node(0.5 + decrem, 1 + decrem), Node(0.5 + decrem, 7 - decrem)),  # Top edge
+            (Node(0.5 + decrem, 7 - decrem), Node(1.5 - decrem, 7 - decrem)),  # Top edge
+            (Node(1.5 - decrem, 7 - decrem), Node(1.5 - decrem, 1 + decrem)),  # Top edge
+            (Node(1.5 - decrem, 1 + decrem), Node(0.5 + decrem, 1 + decrem))  # Top edge
+        ]
+    }
+    obstacles.append(obstacle)
+elif obs_map == 2:
+    start = Node(0.2, 0.2)
+    goal = Node(3, 4)
+    obstacles = []
+elif obs_map == 3:
+    start = Node(0.2, 6)
+    goal = Node(3, 4)
+    obstacles = []
+elif obs_map == 4:
+    start = Node(0.2, 0.2)
+    goal = Node(4, 6)
+    obstacles = []
+elif obs_map == 5:
+    start = Node(0.2, 6)
+    goal = Node(4, 6)
+    obstacles = []
+elif obs_map == 6:
+    start = Node(0.2, 0.2)
+    goal = Node(4, 6)
+    obstacles = []
 max_iter = 5000 #5000
 epsilon = 2.0
 goal_threshold = epsilon
@@ -329,33 +386,65 @@ radius = 0.08
 heading = 0
 
 decrem = 0.2
-obstacles = []
-obstacle = {
-    'x_min': 3 + decrem,
-    'x_max': 4 - decrem,
-    'y_min': 0 + decrem,
-    'y_max': 3 - decrem,
-    'edges': [
-        (Node(3 + decrem, 0 + decrem), Node(3 + decrem, 3 - decrem)),  # Top edge
-        (Node(3 + decrem, 3 - decrem), Node(4 - decrem, 3 - decrem)),  # Top edge
-        (Node(4 - decrem, 3 - decrem), Node(4 - decrem, 0 + decrem)),  # Top edge
-        (Node(4 - decrem, 0 + decrem), Node(3 + decrem, 0 + decrem))  # Top edge
-    ]
-}
-obstacles.append(obstacle)
-obstacle = {
-    'x_min': 0.5 + decrem,
-    'x_max': 1.5 - decrem,
-    'y_min': 1 + decrem,
-    'y_max': 7 - decrem,
-    'edges': [
-        (Node(0.5 + decrem, 1 + decrem), Node(0.5 + decrem, 7 - decrem)),  # Top edge
-        (Node(0.5 + decrem, 7 - decrem), Node(1.5 - decrem, 7 - decrem)),  # Top edge
-        (Node(1.5 - decrem, 7 - decrem), Node(1.5 - decrem, 1 + decrem)),  # Top edge
-        (Node(1.5 - decrem, 1 + decrem), Node(0.5 + decrem, 1 + decrem))  # Top edge
-    ]
-}
-obstacles.append(obstacle)
+
+if obs_map == 0:
+    obstacles = []
+    obstacle = {
+        'x_min': 3 + decrem,
+        'x_max': 4 - decrem,
+        'y_min': 0 + decrem,
+        'y_max': 3 - decrem,
+        'edges': [
+            (Node(3 + decrem, 0 + decrem), Node(3 + decrem, 3 - decrem)),  # Top edge
+            (Node(3 + decrem, 3 - decrem), Node(4 - decrem, 3 - decrem)),  # Top edge
+            (Node(4 - decrem, 3 - decrem), Node(4 - decrem, 0 + decrem)),  # Top edge
+            (Node(4 - decrem, 0 + decrem), Node(3 + decrem, 0 + decrem))  # Top edge
+        ]
+    }
+    obstacles.append(obstacle)
+    obstacle = {
+        'x_min': 0.5 + decrem,
+        'x_max': 1.5 - decrem,
+        'y_min': 1 + decrem,
+        'y_max': 7 - decrem,
+        'edges': [
+            (Node(0.5 + decrem, 1 + decrem), Node(0.5 + decrem, 7 - decrem)),  # Top edge
+            (Node(0.5 + decrem, 7 - decrem), Node(1.5 - decrem, 7 - decrem)),  # Top edge
+            (Node(1.5 - decrem, 7 - decrem), Node(1.5 - decrem, 1 + decrem)),  # Top edge
+            (Node(1.5 - decrem, 1 + decrem), Node(0.5 + decrem, 1 + decrem))  # Top edge
+        ]
+    }
+    obstacles.append(obstacle)
+elif obs_map == 1:
+    obstacles = []
+    obstacle = {
+        'x_min': 0 + decrem,
+        'x_max': 3 - decrem,
+        'y_min': 2 + decrem,
+        'y_max': 3 - decrem,
+        'edges': [
+            (Node(0 + decrem, 2 + decrem), Node(0 + decrem, 3 - decrem)),  # Top edge
+            (Node(0 + decrem, 3 - decrem), Node(3 - decrem, 3 - decrem)),  # Top edge
+            (Node(3 - decrem, 3 - decrem), Node(3 - decrem, 2 + decrem)),  # Top edge
+            (Node(3 - decrem, 2 + decrem), Node(0 + decrem, 2 + decrem))  # Top edge
+        ]
+    }
+    obstacles.append(obstacle)
+    obstacle = {
+        'x_min': 0.5 + decrem,
+        'x_max': 1.5 - decrem,
+        'y_min': 1 + decrem,
+        'y_max': 7 - decrem,
+        'edges': [
+            (Node(0.5 + decrem, 1 + decrem), Node(0.5 + decrem, 7 - decrem)),  # Top edge
+            (Node(0.5 + decrem, 7 - decrem), Node(1.5 - decrem, 7 - decrem)),  # Top edge
+            (Node(1.5 - decrem, 7 - decrem), Node(1.5 - decrem, 1 + decrem)),  # Top edge
+            (Node(1.5 - decrem, 1 + decrem), Node(0.5 + decrem, 1 + decrem))  # Top edge
+        ]
+    }
+    obstacles.append(obstacle)
+elif obs_map >= 2:
+    obstacles = []
 
 path_good = True
 
@@ -447,7 +536,7 @@ for i in range(len(smoothed_path) - 1):
 
 o_off_x = 0.2
 o_off_y = 0.2
-shape_t = 3
+shape_t = 4
 if shape_t == 0:
     true_path = []
     true_path.append(Node(0,0))
@@ -493,6 +582,16 @@ if shape_t == 3:
     true_path.append(Node(1.5,0.0))
     true_path.append(Node(0,0))
 
+if shape_t == 4:
+    #small square tailed
+    true_path = []
+    true_path.append(Node(0,0))
+    true_path.append(Node(3,0))
+    true_path.append(Node(3.0,1.5))
+    true_path.append(Node(4.0,1.5))
+    true_path.append(Node(4.0,0))
+    true_path.append(Node(3,0))
+
 #
 if (False):
     way_path = []
@@ -534,7 +633,7 @@ if (False):
         plt.plot([way_path[i].x, way_path[i + 1].x], [way_path[i].y, way_path[i + 1].y], 'r-')
 
 
-#true_path
+#true_path SHAPES
 if (True):
     way_path = []
     way_out = PoseStamped()

@@ -48,7 +48,8 @@ r_atc = {value: key for key, value in axis_codes.items()}
 class POCont:
 	def __init__(self):
 		rospy.init_node('po_controller', anonymous=True)
-		self.odom_sub_topic = 'fused_localization'#'/camera/odom/sample'#'fused_localization'#'/camera/odom/sample'
+		self.odom_sub_topic = '/camera/odom/sample'#'fused_localization'#'/camera/odom/sample'
+		self.odom_topics = ['/camera/odom/sample', 'fused_localization']
 		self.joy_pub = rospy.Publisher('/joy', Joy, queue_size=100)
 		#self.odom_sub = rospy.Subscriber('/vicon/BEAST/odom', Odometry, self.odom_callback, queue_size=1, tcp_nodelay=True)
 		self.odom_sub = rospy.Subscriber(self.odom_sub_topic, Odometry, self.odom_callback_cam, queue_size=1, tcp_nodelay=True)
@@ -93,6 +94,18 @@ class POCont:
 		self.des_swait = 0
 		self.g_thres = 0.3 #threshold of goal waypoint
 
+		self.odom_switch = 3000#6000
+
+		self.HOLDON = 0 #pause for the given time 
+		self.HOLDON_wait = 0 #charge up before you can pause again
+		self.HOLDON_hits = 0 #sensor detections during pause
+		self.sensor_locs = [] #loc of sensor confirmed
+		self.sensor_locs_my = [] #my location when i saw confirmed sensor
+		self.retreating = 0 #retreating to find sensor, prevent seeing another "holding on"
+		self.RETREATPIC = 0 # pause for hyperspectral photo
+		self.wcoord = []
+		self.wcoord_all = []
+
 		#BASE VALUES FOR TRACKING TEST!!!
 		self.devx = None
 		self.devy = None
@@ -100,6 +113,18 @@ class POCont:
 		self.persist = 100
 
 	def world_coordinates_callback(self, data):
+	    if self.HOLDON:
+		    self.HOLDON_hits += 1
+		    print("hit!")
+
+	    if self.HOLDON_wait <= 0 and self.retreating <= 0 and self.RETREATPIC <=0:
+		    self.HOLDON = 4000
+		    self.HOLDON_wait = 4000
+		    print("HOLDON!!!!")
+
+		if self.RETREATPIC > 0:
+			self.wcoord = data.data
+
 	    x_world, y_world, z_world = data.data
 	    dx = x_world - self.targ_coords[0]
 	    dy = y_world - self.targ_coords[1]
@@ -387,17 +412,134 @@ class POCont:
 	    linear_distance = targ_vel - (abs(current_pose.twist.twist.linear.x) + abs(current_pose.twist.twist.linear.y) + abs(current_pose.twist.twist.linear.z))
 	    linear_velocity = kp_linear * linear_distance
 	    return linear_velocity
-	    
+
+	def cam_track(self, fixed_odom, kpx, kpy, kpz):
+		if True:
+			if True:
+				#No waypoint commands, Idle state
+				#print("waiting")
+				if (True):
+					tracking_test = True
+					# Assuming you have the camera pitch angle in radians
+					theta_pitch =  -math.pi + (self.cam_pose[1] - 2.0 * (math.pi))
+
+					# Assuming you have the camera position in the world frame
+					camera_position = [fixed_odom.pose.pose.position.x, fixed_odom.pose.pose.position.y, fixed_odom.pose.pose.position.z]
+
+					# Object coordinates in the camera frame
+					object_coordinates_cam = [(self.targ_coords[0]/100), (self.targ_coords[1]/100)*4.0, (self.targ_coords[2]/100)]
+
+					# Define the rotation matrix for pitch
+					"""
+					R_pitch = np.array([[1, 0, 0],
+					                    [0, np.cos(theta_pitch), -np.sin(theta_pitch)],
+					                    [0, np.sin(theta_pitch), np.cos(theta_pitch)]])
+					"""
+					"""
+					R_pitch = np.array([[np.cos(theta_pitch), 0, np.sin(theta_pitch)],
+					                    [0, 1, 0],
+					                    [-np.sin(theta_pitch), 0, np.cos(theta_pitch)]])
+					"""
+
+					R_pitch = np.array([[np.cos(theta_pitch), -np.sin(theta_pitch), 0],
+					                    [np.sin(theta_pitch), np.cos(theta_pitch), 0],
+					                    [0, 0, 1]])
+					
+
+					# Transform object coordinates to the world frame
+					object_coordinates_world = np.dot(R_pitch, object_coordinates_cam)
+
+					# Adjust for camera position
+					object_coordinates_world += camera_position
+					#print("theta, cam_pos: ", theta_pitch, camera_position)
+					#print("obj_cam: ", object_coordinates_cam)
+					#print("obj_world: ", object_coordinates_world)
+
+					if (tracking_test == True):
+						dumx = fixed_odom.pose.pose.position.x + (self.targ_coords[0]/100) #object_coordinates_world[0] #fixed_odom.pose.pose.position.x + object_coordinates_world[0]
+						dumy = fixed_odom.pose.pose.position.y + (self.targ_coords[1]/100)*4.0# object_coordinates_world[1] #fixed_odom.pose.pose.position.y + object_coordinates_world[1]
+						dumz = object_coordinates_world[2] #fixed_odom.pose.pose.position.z + object_coordinates_world[2]
+						if self.devx == None:
+							self.devx = dumx
+							self.devy = dumy
+							self.devz = dumz
+						else:
+							deviant = (abs(self.devx - dumx) + abs(self.devx - dumx) + abs(self.devx - dumx))/3
+							#print("DEVIANT: ", deviant, self.devx, dumx)
+							self.devx = dumx
+							self.devy = dumy
+							self.devz = dumz
+							if (deviant < 0.5):
+								if self.persist <= 0:
+									eyeg = []
+									eyeg = PoseStamped()
+									direction_x = fixed_odom.pose.pose.position.x - (fixed_odom.pose.pose.position.x + (dumx/100))
+									direction_y = fixed_odom.pose.pose.position.y - (fixed_odom.pose.pose.position.x + (dumy/100))
+									distance = math.sqrt(direction_x ** 2 + direction_y ** 2)
+									if distance != 0:
+										direction_x /= distance
+										direction_y /= distance
+									eyeg.pose.position.x = fixed_odom.pose.pose.position.x + (dumx/100) + ((dumz/100) / 2.0) * direction_x
+									eyeg.pose.position.y = (fixed_odom.pose.pose.position.y + (dumy/100) + ((dumz/100) / 2.0) * direction_y)
+									"""
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
+									"""
+									#self.waypoints.append(eyeg)
+									self.persist = 100
+								else:
+									self.persist -= 1
+							else:
+								self.persist = 100
+
+					else:
+						#BASIC
+						dumx = fixed_odom.pose.pose.position.x# + 10
+						dumy = fixed_odom.pose.pose.position.y# + 10
+						dumz = fixed_odom.pose.pose.position.z# + 0
+					
+					#print("dumyCORDS: ", [dumx, dumy, dumz])
+
+					camx, camy = self.cam_orient(fixed_odom, dumx, dumy, dumz, kpx, kpy, kpz)
+					#print("camx:", camx, ", camy:", camy )
+					#camx = 2.5
+					#camy = 2.0
+					self.cam_pose = [camx, camy]
+
+					return camx, camy, dumx, dumy, dumz
+
+	def angle(self, x1, y1, x2, y2):
+		return math.atan2(y2 - y1, x2 - x1) 
+
+	def calculate_point(self, x, y, distance, angle_radians):
+		# Calculate the new point's coordinates
+		new_x = x + distance * math.cos(angle_radians)
+		new_y = y + distance * math.sin(angle_radians)
+
+		return new_x, new_y
 
 	def spin(self):
 		rate = rospy.Rate(1000)
 		# Publish the Joy message repeatedly
 		scan_dir = 0
 		lin_out = 0
-		targ_vel = 0.1
+		targ_vel = 0.25
 
 		while not rospy.is_shutdown():
 			time_since_last_receive = rospy.Time.now() - self.last_received_time
+
+			if self.HOLDON <= 0 and self.HOLDON_wait > 0:
+				self.HOLDON_wait -= 1
 
 			#set robot orientation
 			self.set_rtheta()
@@ -406,7 +548,7 @@ class POCont:
 
 			#motion gains
 			lingain = 1.0 * 0.002#0.01#3.0 * 6#3.0#1.5
-			anggain = 8.0 * 20#8.0#5.0#3.0
+			anggain = 8.0 * 20#20#8.0#5.0#3.0
 			
 			#cam heading gains
 			kpx = 1.0
@@ -433,15 +575,28 @@ class POCont:
 				self.joy_msg.buttons = [0] * 12
 				print("OB")
 				x = 0
-			elif ((abs(self.r_pos[0] - self.g_loc[0]) > self.g_thres or abs(self.r_pos[1] - self.g_loc[1]) > self.g_thres) and self.g_met == False and self.g_loc[0] != -10):
+			elif (self.HOLDON <= 0 and self.RETREATPIC <= 0 and ((abs(self.r_pos[0] - self.g_loc[0]) > self.g_thres or abs(self.r_pos[1] - self.g_loc[1]) > self.g_thres) and self.g_met == False and self.g_loc[0] != -10)):
 				#WE ON GO
 				#Robot is travelling
+				if self.odom_switch > 0:
+					if self.odom_sub_topic == self.odom_topics[0]:
+						self.odom_switch -= 1
+						print("still odom")
+						if self.odom_switch <= 0:
+							print("switch to fused")
+
 				dist = self.calculate_distance(self.r_pos[0], self.r_pos[1], self.g_loc[0], self.g_loc[1])
 
 				lin, ang = self.calculate_desired_cmd(fixed_odom, self.g_odom, lingain, anggain, targ_vel)
 				scan_dir = 0
 				if (self.has_target or True):
-					camx, camy = self.cam_orient(fixed_odom, self.g_loc[0], self.g_loc[1], fixed_odom.pose.pose.position.z + 0, kpx, kpy, kpz)
+					camx = 2.5#2.25
+					camy = 2.0#2.1
+					if self.retreating > 0:
+						camx = 2.5
+						camy = 2.0
+					#self.cam_track(fixed_odom, kpx, kpy, kpz)
+					#camx, camy = self.cam_orient(fixed_odom, self.g_loc[0], self.g_loc[1], fixed_odom.pose.pose.position.z + 0, kpx, kpy, kpz)
 				else:
 					dumx = fixed_odom.pose.pose.position.x + 10*math.cos(scan_dir + self.r_theta)
 					dumy = fixed_odom.pose.pose.position.y + 10*math.sin(scan_dir + self.r_theta)
@@ -530,105 +685,119 @@ class POCont:
 						self.g_met = False
 						self.waypoints.pop(0)
 						print(self.g_loc)
+
+						self.retreating -=1
+						if self.retreating == 0:
+							self.HOLDON_wait = 2000
+			elif self.HOLDON:
+
+				senx = fixed_odom.pose.pose.position.x
+				seny = fixed_odom.pose.pose.position.y
+				senz = fixed_odom.pose.pose.position.z
+				camx, camy, senx, seny, senz = self.cam_track(fixed_odom, kpx, kpy, kpz)
+				if self.HOLDON <= 1000:
+					camx = 2.5
+					camy = 2.0
+
+
+				self.HOLDON -= 1
+				if self.HOLDON == 0:
+					self.HOLDON_wait = 2000
+					if self.HOLDON_hits >= 5:
+						print("FOUND A SENSOR!!")
+						print("FOUND A SENSOR!!")
+						print("FOUND A SENSOR!!")
+						print("FOUND A SENSOR!!")
+						"""
+						self.sensor_locs.append([senx, seny, senz])
+						self.sensor_locs_my.append([fixed_odom.pose.pose.position.x, fixed_odom.pose.pose.position.y, fixed_odom.pose.pose.position.z])
+						
+						dist = self.calculate_distance(self.sensor_locs[-1][0], self.sensor_locs[-1][1], self.sensor_locs_my[-1][0], self.sensor_locs_my[-1][1])
+						ang = self.angle(self.sensor_locs[-1][0], self.sensor_locs[-1][1], self.sensor_locs_my[-1][0], self.sensor_locs_my[-1][1])
+						rrx, rry = self.calculate_point(self.sensor_locs_my[-1][0], self.sensor_locs_my[-1][1], 3.0, ang)
+						rrx2, rry2 = self.calculate_point(self.sensor_locs_my[-1][0], self.sensor_locs_my[-1][1], 1.0, ang)
+						#retloc = [rrx, rry]
+						retloc = PoseStamped()
+						retloc.pose.position.x = rrx
+						retloc.pose.position.y = rry
+						retloc2 = PoseStamped()
+						retloc2.pose.position.x = rrx2
+						retloc2.pose.position.y = rry2
+						myloc = PoseStamped()
+						myloc.pose.position.x = self.sensor_locs_my[-1][0]
+						myloc.pose.position.y = self.sensor_locs_my[-1][1]
+						currgo = PoseStamped()
+						currgo.pose.position.x = self.g_loc[0]
+						currgo.pose.position.y = self.g_loc[1]
+						#retloc2 = [rrx2, rry2]
+						#test = []
+						#test.append(retloc)
+						#test.append(retloc2)
+						#test.append([self.sensor_locs_my[-1][0], self.sensor_locs_my[-1][1]])
+						#test.append(self.waypoints)
+						#self.waypoints = test
+						self.waypoints.insert(0,currgo)
+						self.waypoints.insert(0,myloc)
+						self.waypoints.insert(0,retloc2)
+						#self.waypoints.insert(0,retloc)
+						self.g_loc[0] = rrx
+						self.g_loc[1] = rry
+						print("GOAL: ", self.g_loc)
+						print("MY: ", self.sensor_locs_my[-1])
+						print("RETM: ", (rrx2,rry2))
+						print("WYPS: ", self.waypoints)
+						print("RETREAT TO VIEW IT AGAIN")
+						self.retreating = 3"""
+						self.RETREATPIC = 4000
+
+					self.HOLDON_hits = 0
+
+				self.last_received_time = rospy.Time.now()
+				#self.joy_msg = Joy()
+				#self.joy_msg.axes = [0.0] * 8
+				#self.joy_msg.buttons = [0] * 12
+				self.joy_msg.axes[r_atc["ABS_HAT0X"]] = camx
+				self.joy_msg.axes[r_atc["ABS_HAT0Y"]] = camy
+				if self.joy_msg.axes[r_atc["ABS_RZ"]] > 0:
+					self.joy_msg.axes[r_atc["ABS_RZ"]] = 0
+				if self.joy_msg.axes[r_atc["ABS_RZ"]] <= 0.01:
+					self.joy_msg.axes[r_atc["ABS_RZ"]] = 0#if bag_testing
+				#self.joy_msg.axes[r_atc["ABS_X"]] = 0.1#ang_out_f
+				#self.joy_msg.axes[r_atc["ABS_RX"]] = 0#-ang_out_r
+			elif self.RETREATPIC:
+
+				print("WE FLICKING UP FR!!!!!!!!")
+
+				self.RETREATPIC -= 1
+				if self.RETREATPIC == 0:
+					print("COORDINATES: ", self.wcoord)
+					self.wcoord_all.append(self.wcoord)
+					self.HOLDON_wait = 2000
+
+				self.last_received_time = rospy.Time.now()
+				#self.joy_msg = Joy()
+				#self.joy_msg.axes = [0.0] * 8
+				#self.joy_msg.buttons = [0] * 12
+				#self.joy_msg.axes[r_atc["ABS_HAT0X"]] = camx
+				#self.joy_msg.axes[r_atc["ABS_HAT0Y"]] = camy
+				if self.joy_msg.axes[r_atc["ABS_RZ"]] > 0:
+					self.joy_msg.axes[r_atc["ABS_RZ"]] -= 0.01
+				if self.joy_msg.axes[r_atc["ABS_RZ"]] <= 0.01:
+					self.joy_msg.axes[r_atc["ABS_RZ"]] = 0#if bag_testing
+
+				#self.joy_msg.axes[r_atc["ABS_X"]] = 0.1#ang_out_f
+				#self.joy_msg.axes[r_atc["ABS_RX"]] = 0#-ang_out_r
 			else:
 				x = 0
 				#No waypoint commands, Idle state
-				print("waiting")
+				#print("waiting")
+				print("sensors_found: ", self.sensor_locs)
+				print("my_location_then: ", self.sensor_locs_my)
+
 				if (self.has_target or True):
-					tracking_test = False
-					# Assuming you have the camera pitch angle in radians
-					theta_pitch =  -math.pi + (self.cam_pose[1] - 2.0 * (math.pi))
-
-					# Assuming you have the camera position in the world frame
-					camera_position = [fixed_odom.pose.pose.position.x, fixed_odom.pose.pose.position.y, fixed_odom.pose.pose.position.z]
-
-					# Object coordinates in the camera frame
-					object_coordinates_cam = [(self.targ_coords[0]/100), (self.targ_coords[1]/100)*4.0, (self.targ_coords[2]/100)]
-
-					# Define the rotation matrix for pitch
-					"""
-					R_pitch = np.array([[1, 0, 0],
-					                    [0, np.cos(theta_pitch), -np.sin(theta_pitch)],
-					                    [0, np.sin(theta_pitch), np.cos(theta_pitch)]])
-					"""
-					"""
-					R_pitch = np.array([[np.cos(theta_pitch), 0, np.sin(theta_pitch)],
-					                    [0, 1, 0],
-					                    [-np.sin(theta_pitch), 0, np.cos(theta_pitch)]])
-					"""
-
-					R_pitch = np.array([[np.cos(theta_pitch), -np.sin(theta_pitch), 0],
-					                    [np.sin(theta_pitch), np.cos(theta_pitch), 0],
-					                    [0, 0, 1]])
-					
-
-					# Transform object coordinates to the world frame
-					object_coordinates_world = np.dot(R_pitch, object_coordinates_cam)
-
-					# Adjust for camera position
-					object_coordinates_world += camera_position
-					#print("theta, cam_pos: ", theta_pitch, camera_position)
-					#print("obj_cam: ", object_coordinates_cam)
-					#print("obj_world: ", object_coordinates_world)
-
-					if (tracking_test == True):
-						dumx = fixed_odom.pose.pose.position.x + (self.targ_coords[0]/100) #object_coordinates_world[0] #fixed_odom.pose.pose.position.x + object_coordinates_world[0]
-						dumy = fixed_odom.pose.pose.position.y + (self.targ_coords[1]/100)*4.0# object_coordinates_world[1] #fixed_odom.pose.pose.position.y + object_coordinates_world[1]
-						dumz = object_coordinates_world[2] #fixed_odom.pose.pose.position.z + object_coordinates_world[2]
-						if self.devx == None:
-							self.devx = dumx
-							self.devy = dumy
-							self.devz = dumz
-						else:
-							deviant = (abs(self.devx - dumx) + abs(self.devx - dumx) + abs(self.devx - dumx))/3
-							print("DEVIANT: ", deviant, self.devx, dumx)
-							self.devx = dumx
-							self.devy = dumy
-							self.devz = dumz
-							if (deviant < 0.5):
-								if self.persist <= 0:
-									eyeg = []
-									eyeg = PoseStamped()
-									direction_x = fixed_odom.pose.pose.position.x - (fixed_odom.pose.pose.position.x + (dumx/100))
-									direction_y = fixed_odom.pose.pose.position.y - (fixed_odom.pose.pose.position.x + (dumy/100))
-									distance = math.sqrt(direction_x ** 2 + direction_y ** 2)
-									if distance != 0:
-										direction_x /= distance
-										direction_y /= distance
-									eyeg.pose.position.x = fixed_odom.pose.pose.position.x + (dumx/100) + ((dumz/100) / 2.0) * direction_x
-									eyeg.pose.position.y = (fixed_odom.pose.pose.position.y + (dumy/100) + ((dumz/100) / 2.0) * direction_y)
-									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
-									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
-									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
-									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
-									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
-									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
-									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
-									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
-									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
-									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
-									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
-									print("EYE: ", eyeg.pose.position.x, eyeg.pose.position.y)
-									#self.waypoints.append(eyeg)
-									self.persist = 100
-								else:
-									self.persist -= 1
-							else:
-								self.persist = 100
-
-					else:
-						#BASIC
-						dumx = fixed_odom.pose.pose.position.x + 10
-						dumy = fixed_odom.pose.pose.position.y + 10
-						dumz = fixed_odom.pose.pose.position.z + 0
-					
-					print("dumyCORDS: ", [dumx, dumy, dumz])
-
-					camx, camy = self.cam_orient(fixed_odom, dumx, dumy, dumz, kpx, kpy, kpz)
-					print("camx:", camx, ", camy:", camy )
-					#camx = 2.5
-					#camy = 2.0
-					self.cam_pose = [camx, camy]
+					camx, camy, _, _, _ = self.cam_track(fixed_odom, kpx, kpy, kpz)
+					camx = 2.5
+					camy = 2.0
 				
 				else:
 					dumx = fixed_odom.pose.pose.position.x + 10*math.cos(scan_dir)
