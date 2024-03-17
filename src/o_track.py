@@ -122,8 +122,8 @@ class POCont:
 		    self.HOLDON_wait = 4000
 		    print("HOLDON!!!!")
 
-		if self.RETREATPIC > 0:
-			self.wcoord = data.data
+	    if self.RETREATPIC > 0:
+	    	self.wcoord = data.data
 
 	    x_world, y_world, z_world = data.data
 	    dx = x_world - self.targ_coords[0]
@@ -533,7 +533,7 @@ class POCont:
 		# Publish the Joy message repeatedly
 		scan_dir = 0
 		lin_out = 0
-		targ_vel = 0.25
+		targ_vel = 0.3
 
 		while not rospy.is_shutdown():
 			time_since_last_receive = rospy.Time.now() - self.last_received_time
@@ -547,7 +547,7 @@ class POCont:
 			fixed_odom.pose.pose.orientation.z = self.r_theta #r_theta is robot orientation
 
 			#motion gains
-			lingain = 1.0 * 0.002#0.01#3.0 * 6#3.0#1.5
+			lingain = 1.0 * 0.004#0.01#3.0 * 6#3.0#1.5
 			anggain = 8.0 * 20#20#8.0#5.0#3.0
 			
 			#cam heading gains
@@ -584,6 +584,8 @@ class POCont:
 						print("still odom")
 						if self.odom_switch <= 0:
 							print("switch to fused")
+							#self.odom_sub_topic = self.odom_topics[1]
+							self.odom_sub = rospy.Subscriber(self.odom_sub_topic, Odometry, self.odom_callback_cam, queue_size=1, tcp_nodelay=True)
 
 				dist = self.calculate_distance(self.r_pos[0], self.r_pos[1], self.g_loc[0], self.g_loc[1])
 
@@ -630,8 +632,8 @@ class POCont:
 					if lin > 0.01:
 						lin = 0.01
 				lin_out = lin_out + lin # + 0.2
-				if lin_out < 0.2:
-					lin_out = 0.2
+				if lin_out < 0.2:#0.85
+					lin_out = #0.85
 				if lin_out > 1.0:
 					lin_out = 1.0
 
@@ -773,6 +775,7 @@ class POCont:
 					print("COORDINATES: ", self.wcoord)
 					self.wcoord_all.append(self.wcoord)
 					self.HOLDON_wait = 2000
+					#x = self.wcoor[25]
 
 				self.last_received_time = rospy.Time.now()
 				#self.joy_msg = Joy()

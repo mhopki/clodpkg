@@ -536,12 +536,13 @@ for i in range(len(smoothed_path) - 1):
 
 o_off_x = 0.2
 o_off_y = 0.2
-shape_t = 4
+shape_t = 0
 if shape_t == 0:
     true_path = []
-    true_path.append(Node(0,0))
+    #true_path.append(Node(0,0))
     #true_path.append(Node(1.5,0))
-    true_path.append(Node(3.0,0.0))
+    true_path.append(Node(4.0,0.0))
+    true_path.append(Node(6.0,12.0))
 
 if shape_t == 1:
     true_path = []
