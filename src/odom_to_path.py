@@ -17,7 +17,7 @@ class OdomToPathConverter:
         self.path_msg.header.frame_id = 'camera_odom_frame'  # Adjust the frame_id accordingly
 
         self.path2_msg = Path()
-        self.path2_msg.header.frame_id = 'map'  # Adjust the frame_id accordingly
+        self.path2_msg.header.frame_id = 'base_link'  # Adjust the frame_id accordingly
 
     def odom_callback(self, odom_msg):
         pose = PoseStamped()

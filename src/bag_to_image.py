@@ -24,6 +24,7 @@ class BagToImage:
 
         # Subscriber for depth image and camera info
         rospy.Subscriber('/camera/image_raw', Image, self.image_callback)
+        #rospy.Subscriber('/yolov7/yolov7/visualization', Image, self.image_callback)
 
         # Create a Rate object to control the loop frequency
         self.rate = rospy.Rate(10)  # 10 Hz
