@@ -17,6 +17,7 @@ class ImageSegmentation:
 
         # New publisher for world coordinates
         self.world_coordinates_pub = rospy.Publisher('/object_world_coordinates', Float32MultiArray, queue_size=10)
+        
 
         # Focal length of the camera (you need to replace this with the actual focal length)
         self.focal_length = 2300.0  # Example value, replace with the actual focal length
@@ -67,7 +68,9 @@ class ImageSegmentation:
 
             # Publish world coordinates to the topic
             world_coordinates_msg = Float32MultiArray(data=[x_world, y_world, z_world])
+            
             self.world_coordinates_pub.publish(world_coordinates_msg)
+            
 
         # Mirror the image vertically and horizontally
         cv_image = cv2.flip(cv_image, 0)
