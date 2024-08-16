@@ -56,6 +56,8 @@ class POCont:
 		self.waypoint_sub = rospy.Subscriber('/waypoints', PoseStamped, self.waypoint_callback)
 		#pose_sub = rospy.Subscriber('/vicon/BEAST/pose', PoseStamped, pose_callback, queue_size=1, tcp_nodelay=True)
 		self.target_sub = rospy.Subscriber('/object_world_coordinates', Float32MultiArray, self.world_coordinates_callback)
+		self.photo_pub = rospy.Publisher('/take_photo', Float32MultiArray, queue_size=10)
+		self.photo_sub = rospy.Subscriber('/take_photo', Float32MultiArray, self.photo_callback)
 
 		self.last_received_time = rospy.Time.now()
 
@@ -105,6 +107,8 @@ class POCont:
 		self.RETREATPIC = 0 # pause for hyperspectral photo
 		self.wcoord = []
 		self.wcoord_all = []
+
+		self.photo_good = False
 
 		#BASE VALUES FOR TRACKING TEST!!!
 		self.devx = None
@@ -184,6 +188,10 @@ class POCont:
 	def pose_callback(self, data):
 		#Do nothing
 	    x = 0
+
+	def photo_callback(self, data):
+	    if data.data[0] == 1:
+	        self.photo_good = True
 
 	def cam_orient(self, current_pose, ox, oy, oz, kpx, kpy, kpz):
 		#XY plane
@@ -292,6 +300,9 @@ class POCont:
 	    	#truecy = 2.0 + (heading_error_gen / math.pi)
 	    	#if truecy < 2.0: truecy = 2.0
 	    	#truecy = 2.0
+	    	rev_off = (truecy - 2.0)
+	    	truecy = 3.0 - rev_off #FOR FLIPPED CAM
+	    	print("1 zone")
 	    elif 1.0 - (heading_error_gen / math.pi) != 1.0 :
 	    	#print("overextend")
 	    	truecy = (abs(abs((3.0 - (heading_error_gen / math.pi) + (self.cam_pose[1] - 2.0)) - 3.0) + 2.0) - 3.0) + 2.0
@@ -301,6 +312,10 @@ class POCont:
 	    	#truecy = 2.0 + (heading_error_gen / math.pi)#+ (1.0 + (heading_error_gen / math.pi))
 	    	if truecy < 2.0: truecy = 2.0
 	    	#truecy = 3.0
+	    	rev_off = (truecy-2.0)
+	    	truecy = 3.0 - rev_off #FOR FLIPPED CAM
+	    	print("2 zone")
+
 	    cey = ((kpy * 0)/math.pi + 3.0)
 
 	    return truecx, truecy
@@ -427,7 +442,7 @@ class POCont:
 					camera_position = [fixed_odom.pose.pose.position.x, fixed_odom.pose.pose.position.y, fixed_odom.pose.pose.position.z]
 
 					# Object coordinates in the camera frame
-					object_coordinates_cam = [(self.targ_coords[0]/100), (self.targ_coords[1]/100)*4.0, (self.targ_coords[2]/100)]
+					object_coordinates_cam = [(self.targ_coords[0]/100), (self.targ_coords[1]/100)*4.0, -(self.targ_coords[2]/100)] #MADE Z NEGATIVE AFTER FLIPPING CAM AROUND
 
 					# Define the rotation matrix for pitch
 					"""
@@ -456,8 +471,10 @@ class POCont:
 					#print("obj_world: ", object_coordinates_world)
 
 					if (tracking_test == True):
-						dumx = fixed_odom.pose.pose.position.x + (self.targ_coords[0]/100) #object_coordinates_world[0] #fixed_odom.pose.pose.position.x + object_coordinates_world[0]
-						dumy = fixed_odom.pose.pose.position.y + (self.targ_coords[1]/100)*4.0# object_coordinates_world[1] #fixed_odom.pose.pose.position.y + object_coordinates_world[1]
+						divnum = 500#100
+						sidenum = 1.0#2.0#4.0
+						dumx = fixed_odom.pose.pose.position.x - (self.targ_coords[0]/divnum) #FLIPPED CAMERA MAKES IT A MINUS SIGN   #object_coordinates_world[0] #fixed_odom.pose.pose.position.x + object_coordinates_world[0]
+						dumy = fixed_odom.pose.pose.position.y + (self.targ_coords[1]/divnum)*sidenum# object_coordinates_world[1] #fixed_odom.pose.pose.position.y + object_coordinates_world[1]
 						dumz = object_coordinates_world[2] #fixed_odom.pose.pose.position.z + object_coordinates_world[2]
 						if self.devx == None:
 							self.devx = dumx
@@ -508,10 +525,10 @@ class POCont:
 						dumy = fixed_odom.pose.pose.position.y# + 10
 						dumz = fixed_odom.pose.pose.position.z# + 0
 					
-					#print("dumyCORDS: ", [dumx, dumy, dumz])
+					print("dumyCORDS: ", [dumx, dumy, dumz])
 
 					camx, camy = self.cam_orient(fixed_odom, dumx, dumy, dumz, kpx, kpy, kpz)
-					#print("camx:", camx, ", camy:", camy )
+					print("camx:", camx, ", camy:", camy )
 					#camx = 2.5
 					#camy = 2.0
 					self.cam_pose = [camx, camy]
@@ -593,10 +610,10 @@ class POCont:
 				scan_dir = 0
 				if (self.has_target or True):
 					camx = 2.5#2.25
-					camy = 2.0#2.1
+					camy = 3.0#2.0#2.1
 					if self.retreating > 0:
 						camx = 2.5
-						camy = 2.0
+						camy = 3.0#2.0
 					#self.cam_track(fixed_odom, kpx, kpy, kpz)
 					#camx, camy = self.cam_orient(fixed_odom, self.g_loc[0], self.g_loc[1], fixed_odom.pose.pose.position.z + 0, kpx, kpy, kpz)
 				else:
@@ -633,7 +650,7 @@ class POCont:
 						lin = 0.01
 				lin_out = lin_out + lin # + 0.2
 				if lin_out < 0.2:#0.85
-					lin_out = #0.85
+					lin_out = 0.2#0.85
 				if lin_out > 1.0:
 					lin_out = 1.0
 
@@ -649,7 +666,12 @@ class POCont:
 					ang_out_r = -1.0
 
 				self.last_received_time = rospy.Time.now()
-				self.joy_msg.axes[r_atc["ABS_RZ"]] = lin_out
+				if (self.retreating == 2):
+					self.joy_msg.axes[r_atc["ABS_Z"]] = lin_out
+					self.joy_msg.axes[r_atc["ABS_RZ"]] = 0
+				else:
+					self.joy_msg.axes[r_atc["ABS_Z"]] = 0
+					self.joy_msg.axes[r_atc["ABS_RZ"]] = lin_out
 				self.joy_msg.axes[r_atc["ABS_X"]] = ang_out_f
 				self.joy_msg.axes[r_atc["ABS_RX"]] = -ang_out_r
 			elif (((abs(self.r_pos[0] - self.g_loc[0]) <= self.g_thres and abs(self.r_pos[1] - self.g_loc[1]) <= self.g_thres) or self.g_met == True) and self.g_loc[0] != -10):
@@ -691,15 +713,20 @@ class POCont:
 						self.retreating -=1
 						if self.retreating == 0:
 							self.HOLDON_wait = 2000
+							photo_msg = Float32MultiArray(data=[0])
+							self.photo_pub.publish(photo_msg)
+							self.RETREATPIC = 1000#4000
+							self.photo_good = False
 			elif self.HOLDON:
-
+				print("HOLDON")
 				senx = fixed_odom.pose.pose.position.x
 				seny = fixed_odom.pose.pose.position.y
 				senz = fixed_odom.pose.pose.position.z
 				camx, camy, senx, seny, senz = self.cam_track(fixed_odom, kpx, kpy, kpz)
+				camy = 3.0
 				if self.HOLDON <= 1000:
 					camx = 2.5
-					camy = 2.0
+					camy = 3.0#2.0
 
 
 				self.HOLDON -= 1
@@ -710,7 +737,7 @@ class POCont:
 						print("FOUND A SENSOR!!")
 						print("FOUND A SENSOR!!")
 						print("FOUND A SENSOR!!")
-						"""
+						#"""
 						self.sensor_locs.append([senx, seny, senz])
 						self.sensor_locs_my.append([fixed_odom.pose.pose.position.x, fixed_odom.pose.pose.position.y, fixed_odom.pose.pose.position.z])
 						
@@ -749,8 +776,8 @@ class POCont:
 						print("RETM: ", (rrx2,rry2))
 						print("WYPS: ", self.waypoints)
 						print("RETREAT TO VIEW IT AGAIN")
-						self.retreating = 3"""
-						self.RETREATPIC = 4000
+						self.retreating = 2#3#"""
+						#self.RETREATPIC = 4000
 
 					self.HOLDON_hits = 0
 
@@ -770,11 +797,14 @@ class POCont:
 
 				print("WE FLICKING UP FR!!!!!!!!")
 
-				self.RETREATPIC -= 1
+				if self.photo_good == True:
+					self.RETREATPIC -= 1
+
 				if self.RETREATPIC == 0:
 					print("COORDINATES: ", self.wcoord)
 					self.wcoord_all.append(self.wcoord)
 					self.HOLDON_wait = 2000
+					self.photo_good = False
 					#x = self.wcoor[25]
 
 				self.last_received_time = rospy.Time.now()
@@ -800,7 +830,7 @@ class POCont:
 				if (self.has_target or True):
 					camx, camy, _, _, _ = self.cam_track(fixed_odom, kpx, kpy, kpz)
 					camx = 2.5
-					camy = 2.0
+					camy = 3.0#2.75
 				
 				else:
 					dumx = fixed_odom.pose.pose.position.x + 10*math.cos(scan_dir)

@@ -21,6 +21,11 @@ elif [[ "$my_ip" == "10.103.90.126" ]]; then
 	export ROS_IP=10.103.90.126
 	#export ROS_MASTER_URI=http://10.103.121.167:11311
 	export ROS_MASTER_URI=http://10.103.90.126:11311
+elif [[ "$my_ip" == "10.0.65.10" ]]; then
+        # Set ROS_MASTER_URI
+        export ROS_IP=10.103.90.126
+        #export ROS_MASTER_URI=http://10.103.121.167:11311
+        export ROS_MASTER_URI=http://10.103.90.126:11311
 elif [[ "$my_ip" == "192.168.50.205" ]]; then
         # Set ROS_MASTER_URI
         export ROS_IP=192.168.50.205
@@ -67,16 +72,16 @@ elif [[ "$my_ip" == "192.168.50.204" ]]; then
     # Set ROS_MASTER_URI to your computer's IP address and default port
     #export ROS_MASTER_URI=http://10.103.121.167:11311
     export ROS_MASTER_URI=http://192.168.50.205:11311
-elif [[ "$my_ip" == "192.168.80.95" ]]; then
+elif [[ "$my_ip" == "10.103.114.83" ]]; then
     #mrsl_mast
-    export ROS_IP=192.168.80.95
-    export ROS_MASTER_URI=http://192.168.80.171:11311
+    export ROS_IP=10.103.114.83
+    # export ROS_MASTER_URI=http://192.168.80.171:11311
     # Set ROS_MASTER_URI to your computer's IP address and default port
-    #export ROS_MASTER_URI=http://10.103.121.167:11311
-    export ROS_MASTER_URI=http://192.168.80.171:11311
+    export ROS_MASTER_URI=http://10.103.121.167:11311
+    # export ROS_MASTER_URI=http:i//192.168.80.171:11311
 fi
 
-
+echo $my_ip
 echo $ROS_IP
 echo $ROS_MASTER_URI
 

@@ -17,6 +17,7 @@ class ImageSegmentation:
 
         # New publisher for world coordinates
         self.world_coordinates_pub = rospy.Publisher('/object_world_coordinates', Float32MultiArray, queue_size=10)
+        self.center_pub = rospy.Publisher('/centerCoord', Float32MultiArray, queue_size=10)
 
         # Focal length of the camera (you need to replace this with the actual focal length)
         self.focal_length = 2300.0  # Example value, replace with the actual focal length
@@ -47,7 +48,7 @@ class ImageSegmentation:
 
         # Calculate and display distance estimate based on the observed height
         observed_height = (center_coordinates[1] + whv[1]) - (center_coordinates[1] - whv[1])  # Height of the bounding box
-        actual_height = 11  # Actual height of the object in centimeters
+        actual_height = 11.5  # Actual height of the object in centimeters
         if whv != (0, 0): 
             distance_estimate = (actual_height * self.focal_length) / observed_height
         else:
@@ -55,6 +56,7 @@ class ImageSegmentation:
         distance_text = f"Distance: {distance_estimate:.2f} cm" if whv != (0, 0) else "No object"
         cv2.putText(cv_image, distance_text, (10, 80),
                     cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 4, cv2.LINE_AA)
+        print("distance: ", distance_estimate)
 
         # Calculate world coordinates based on distance and image coordinates
         if whv != (0, 0):
@@ -64,15 +66,19 @@ class ImageSegmentation:
             world_coordinates_text = f"World Coordinates: X={x_world:.2f} cm, Y={y_world:.2f} cm, Z={z_world:.2f} cm"
             cv2.putText(cv_image, world_coordinates_text, (10, 130),
                         cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 4, cv2.LINE_AA)
-
+            print("NLOSJDOSJD", whv, center_coordinates, [x_world, y_world, z_world])
+            centout = [center_coordinates[0] - whv[0] * 10, center_coordinates[1] - whv[1] * 7]
+            print("HSV: ", centout[0], centout[1])
             # Publish world coordinates to the topic
             world_coordinates_msg = Float32MultiArray(data=[x_world, y_world, z_world])
             self.world_coordinates_pub.publish(world_coordinates_msg)
+            center_msg = Float32MultiArray(data=[center_coordinates[0], center_coordinates[1], distance_estimate])
+            self.center_pub.publish(center_msg)
 
         # Mirror the image vertically and horizontally
         cv_image = cv2.flip(cv_image, 0)
         cv_image = cv2.flip(cv_image, 1)
-
+        #print("YOOOO")
         try:
             # Publish the RGB version of the image
             self.image_pub.publish(self.bridge.cv2_to_imgmsg(cv_image, 'bgr8'))
@@ -84,8 +90,8 @@ class ImageSegmentation:
         hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
         # Define blue color range in HSV
-        lower_blue = np.array([0, 150, 50])  # Original lower range
-        upper_blue = np.array([10, 255, 255])  # Original upper range
+        lower_blue = np.array([0, 150, 0]) #[0, 150, 50])  # Original lower range
+        upper_blue = np.array([10, 255, 255]) #[10, 255, 255])  # Original upper range
 
         # Create a mask for the blue color
         blue_mask = cv2.inRange(hsv_image, lower_blue, upper_blue)
@@ -107,7 +113,7 @@ class ImageSegmentation:
             x, y, w, h = cv2.boundingRect(largest_contour)
 
             # Check if the object is at least 20x20 pixels
-            if w >= 70 and h >= 70:
+            if w >= 80 and h >= 80: #w >= 70 and h >= 70:
                 # Get the center coordinates of the bounding box
                 center_x = x + w // 2
                 center_y = y + h // 2
