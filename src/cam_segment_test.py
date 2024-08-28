@@ -71,6 +71,7 @@ class ImageSegmentation:
             print("HSV: ", centout[0], centout[1])
             # Publish world coordinates to the topic
             world_coordinates_msg = Float32MultiArray(data=[x_world, y_world, z_world])
+            
             self.world_coordinates_pub.publish(world_coordinates_msg)
             center_msg = Float32MultiArray(data=[center_coordinates[0], center_coordinates[1], distance_estimate])
             self.center_pub.publish(center_msg)

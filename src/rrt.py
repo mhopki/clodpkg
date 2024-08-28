@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import math
 from geometry_msgs.msg import PoseStamped
 
-np.random.seed(1)
+np.random.seed(5)
 
 class RRTPlanner:
     def __init__(self, start, goal, obstacle_list, mapsize=(10,10)):
@@ -262,9 +262,9 @@ def send_waypoints(path, way_pub):
 def main():
     rospy.init_node('rrt_planner', anonymous=True)
     way_pub = rospy.Publisher('/waypoints', PoseStamped, queue_size=100)
-    start = (9, 1, 3.14)  # Define start point
-    goal = (10, 25, 0)   # Define goal point
-    mapsize = (40,15)
+    start = (0,0,0)#(0,0,0)#(9, 1, 3.14)  # Define start point
+    goal = (1.4,3,0)#(3,10,0)#(6,25,0)#(3,5,0) #(10, 25, 0)   # Define goal point
+    mapsize = (7,4)#(40,15)#(7,4)#(40,15)
 
     # Define the 10x10 array of obstacles (0s and 1s)
     obstacle_array = np.zeros(mapsize)
@@ -368,6 +368,7 @@ def main():
 		[0, 0, 0, 0, 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0],
 		[0, 0, 0, 0,, 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
 	]"""
+    obstacle_array = []
 
     obstacle_list = []
 
@@ -379,7 +380,7 @@ def main():
                 x1 = len(obstacle_array) - i - 1  # Invert y-axis
                 y2 = y1 + 1
                 x2 = x1 + 1
-                obstacle_list.append((x1 * 1, y1 * 1, x2 * 1, y2 * 1))
+                obstacle_list.append((x1 * 1 - 2, y1 * 1 -12, x2 * 1 - 2, y2 * 1 - 12))
 
     #obstacle_list.append((3.5, 4.25, 5.6, 5.75))  # Define obstacle(s) as (x1, y1, x2, y2)
     #obstacle_list.append((1.5 - 0.5, 3 - 0.5, 1.5 + 0.5, 3 + 0.5))
@@ -427,7 +428,7 @@ def main():
         plt.ylabel('Y')
         plt.title('RRT Path Planning')
         plt.grid(True)
-        #plt.show()
+        plt.show()
 
 if __name__ == '__main__':
     main()
