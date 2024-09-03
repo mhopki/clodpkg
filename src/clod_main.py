@@ -267,7 +267,7 @@ class JoyListener:
             elif self.drive_req >= 1.0:
                 #Now Drive
                 motor_pin_a.value = True
-                motor_pin_b.value = False
+                motor_pin_b.value = True
 
                 motor_val = self.m_out
                 motor_val = (motor_val) * 180
@@ -306,7 +306,7 @@ class JoyListener:
                 motor_pin_b.value = True
             elif self.drive_req <= -1.0:
                 #Now Drive
-                motor_pin_a.value = False
+                motor_pin_a.value = True
                 motor_pin_b.value = True
 
                 motor_val = self.m_out
@@ -334,16 +334,16 @@ class JoyListener:
             #Braking State
             if self.braking == True:
                 self.drive_req = 0
-                motor_pin_a.value = False
-                motor_pin_b.value = False
+                motor_pin_a.value = True
+                motor_pin_b.value = True
                 kit.servo[0].angle = 0
                 kit.servo[2].angle = 0
                 # print("Braking")
 
             #Idling State
             if self.drive_req == 0 and self.braking == False:
-                motor_pin_a.value = True
-                motor_pin_b.value = True
+                motor_pin_a.value = False
+                motor_pin_b.value = False
                 kit.servo[0].angle = 0 #self.m_in1
                 kit.servo[2].angle = 0 #self.m_in2
             #rospy.loginfo("Received joy message: %s", str(self.last_joy_message))
