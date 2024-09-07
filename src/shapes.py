@@ -23,7 +23,7 @@ rospy.init_node('shapes', anonymous=True)
 way_pub = rospy.Publisher('/waypoints', PoseStamped, queue_size=100)
 
 true_path = []
-shape_t = 0
+shape_t = 1
 #0 == square
 if shape_t == 0:
     true_path.append([0,0])
@@ -31,6 +31,13 @@ if shape_t == 0:
     true_path.append([3,3])
     true_path.append([0,3])
     true_path.append([0,0])
+
+if shape_t == 1:
+    true_path.append([0,0])
+    true_path.append([2,2])
+    true_path.append([2,10])
+    true_path.append([4,20])
+
 
 o_off_x = 0
 o_off_y = 0

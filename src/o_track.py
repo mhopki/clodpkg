@@ -48,8 +48,8 @@ r_atc = {value: key for key, value in axis_codes.items()}
 class POCont:
 	def __init__(self):
 		rospy.init_node('po_controller', anonymous=True)
-		self.odom_sub_topic = '/camera/odom/sample'#'fused_localization'#'/camera/odom/sample'
-		self.odom_topics = ['/camera/odom/sample', 'fused_localization']
+		self.odom_sub_topic = '/odometry/filtered_map'#'/camera/odom/sample'#'fused_localization'#'/camera/odom/sample'
+		self.odom_topics = ['/odometry/filtered_map', '/camera/odom/sample', 'fused_localization']
 		self.joy_pub = rospy.Publisher('/joy', Joy, queue_size=100)
 		#self.odom_sub = rospy.Subscriber('/vicon/BEAST/odom', Odometry, self.odom_callback, queue_size=1, tcp_nodelay=True)
 		self.odom_sub = rospy.Subscriber(self.odom_sub_topic, Odometry, self.odom_callback_cam, queue_size=1, tcp_nodelay=True)
@@ -197,7 +197,7 @@ class POCont:
 		#XY plane
 	    dx = ox - current_pose.pose.pose.position.x
 	    dy = oy - current_pose.pose.pose.position.y
-	    desired_heading = math.atan2(-dy, -dx) - (math.pi*0.5)#-dy, -dx
+	    desired_heading = math.atan2(-dy, -dx) - (math.pi*0.5)#-dy, -dx what is reverse
 
 	    #print("dx, dy, des_heading: ", dx, dy, desired_heading, math.atan2(-dy, -dx))
 
@@ -555,7 +555,7 @@ class POCont:
 		# Publish the Joy message repeatedly
 		scan_dir = 0
 		lin_out = 0
-		targ_vel = 0.1
+		targ_vel = 0.1#0.1
 
 		while not rospy.is_shutdown():
 			time_since_last_receive = rospy.Time.now() - self.last_received_time
@@ -603,10 +603,11 @@ class POCont:
 				if self.odom_switch > 0:
 					if self.odom_sub_topic == self.odom_topics[0]:
 						self.odom_switch -= 1
-						print("still odom")
+						#print("still odom")
 						if self.odom_switch <= 0:
-							print("switch to fused")
-							self.odom_sub_topic = self.odom_topics[1]
+							xxxx= 0
+							#print("switch to fused")
+							#self.odom_sub_topic = self.odom_topics[1]
 							#self.odom_sub.unregister()
 							#self.odom_sub = rospy.Subscriber(self.odom_sub_topic, Odometry, self.odom_callback_cam, queue_size=1, tcp_nodelay=True)
 
@@ -649,14 +650,14 @@ class POCont:
 				lin = self.calc_des_vel(fixed_odom, lingain, targ_vel)
 				if lin < 0:
 					lin /= 50
-					if lin < -0.01:
+					if lin < -0.01: #0.01:
 						lin = -0.01
 				if lin > 0:
-					if lin > 0.01:
+					if lin > 0.01: #0.01:
 						lin = 0.01
 				lin_out = lin_out + lin # + 0.2
-				if lin_out < 0.1: #15#0.85
-					lin_out = 0.1 #15#0.85
+				if lin_out < 0.65: #15#0.85
+					lin_out = 0.65 #15#0.85
 				if lin_out > 1.0:
 					lin_out = 1.0
 
@@ -853,8 +854,8 @@ class POCont:
 				x = 0
 				#No waypoint commands, Idle state
 				#print("waiting")
-				print("sensors_found: ", self.sensor_locs)
-				print("my_location_then: ", self.sensor_locs_my)
+				#print("sensors_found: ", self.sensor_locs)
+				#print("my_location_then: ", self.sensor_locs_my)
 
 				if (self.has_target or True):
 					camx, camy, _, _, _ = self.cam_track(fixed_odom, kpx, kpy, kpz)

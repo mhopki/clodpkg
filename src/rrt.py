@@ -263,8 +263,8 @@ def main():
     rospy.init_node('rrt_planner', anonymous=True)
     way_pub = rospy.Publisher('/waypoints', PoseStamped, queue_size=100)
     start = (0,0,0)#(0,0,0)#(9, 1, 3.14)  # Define start point
-    goal = (1.4,3,0)#(3,10,0)#(6,25,0)#(3,5,0) #(10, 25, 0)   # Define goal point
-    mapsize = (7,4)#(40,15)#(7,4)#(40,15)
+    goal = ((1.4),(10),0)#((1.4*2*3),(10*2*1.5),0)#(3,10,0)#(6,25,0)#(3,5,0) #(10, 25, 0)   # Define goal point
+    mapsize = (7,4)#(15,40)#(40,15)#(7,4)#(40,15)
 
     # Define the 10x10 array of obstacles (0s and 1s)
     obstacle_array = np.zeros(mapsize)

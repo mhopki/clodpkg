@@ -60,6 +60,6 @@ fi
 
 # Launch the roslaunch file
 roslaunch clod_pkg joy.launch &
-roslaunch clod_pkg rviz.launch &
+#roslaunch clod_pkg rviz.launch &
 
 wait
