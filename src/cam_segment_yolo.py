@@ -71,6 +71,7 @@ class ImageSegmentation:
             y_world = (center_coordinates[0] - shape[1] / 2) * (distance_estimate / self.focal_length)
             z_world = (center_coordinates[1] - shape[0] / 2) * (distance_estimate / self.focal_length)
             x_world = distance_estimate
+            print("Extra: ", whv, center_coordinates, [x_world, y_world, z_world])
             #world_coordinates_text = f"World Coordinates: X={x_world:.2f} cm, Y={y_world:.2f} cm, Z={z_world:.2f} cm"
             #cv2.putText(cv_image, world_coordinates_text, (10, 130),
             #            cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 4, cv2.LINE_AA)

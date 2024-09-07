@@ -96,6 +96,8 @@ class JoyListener:
         self.cam_pitch = False
         self.cy_pos = 90
         self.cp_pos = 0
+        self.offset_wf = 10
+        self.offset_wb = -5
 
         # ThrustHeading subscriber form visual serrvoing node
         #self.joy_sub = rospy.Subscriber('/joy', Joy, self.thrustheading_callback)
@@ -202,13 +204,21 @@ class JoyListener:
                     servo_val = servo_val #/= 1.5 / 1.5
                 if servo_val > 0:
                     servo_val = servo_val #/= 1.5 / 1.5
-                servo_val = (servo_val + 1) * (40 + offset)  # * 45 + 22 #59
+                servo_val = (servo_val + 1) * (40 + offset) + self.offset_wf  # * 45 + 22 #59
+                if servo_val > 100:
+                    servo_val = 100
+                if servo_val < 0:
+                    servo_val = 0
                 #print(servo_val, self.t_out, " t ", self.turning, self.t_out*1.1)
                 kit.servo[1].angle = servo_val
             else:
                 servo_val = 0 #self.t_out #0
-                servo_val = (servo_val + 1) * 40 #45 + 22 #59
-                
+                offset = 10
+                servo_val = (servo_val + 1) * (40 + offset) + self.offset_wf #45 + 22 #59
+                if servo_val > 100:
+                    servo_val = 100
+                if servo_val < 0:
+                    servo_val = 0
                 #servo_val = 0 #18 #hard coded straight wheel angle
                 #print(servo_val, self.t_out, " nt ", self.turning)
                 #print("front: ", servo_val)
@@ -221,13 +231,20 @@ class JoyListener:
                     servo_val = servo_val #/= 1.5 / 1.5
                 if servo_val > 0:
                     servo_val = servo_val #/= 1.5 / 1.5
-                servo_val = (servo_val + 1) * 40 # * 45 + 22 #59
+                servo_val = (servo_val + 1) * 40 + self.offset_wb # * 45 + 22 #59
                 #print(servo_val, self.t_out2, " t ", self.turning2)
+                if servo_val > 80:
+                    servo_val = 80
+                if servo_val < 0:
+                    servo_val = 0
                 kit.servo[3].angle = servo_val
             else:
                 servo_val = 0 #self.t_out2 #0
-                servo_val = (servo_val + 1) * 40 #45 + 22 #59
-
+                servo_val = (servo_val + 1) * 40 + self.offset_wb #45 + 22 #59
+                if servo_val > 80:
+                    servo_val = 80
+                if servo_val < 0:
+                    servo_val = 0
                 #servo_val = 0 #15 #hard coded straight wheel angle
                 #print(servo_val, self.t_out2, " nt ", self.turning2)
                 #print("rear: ", servo_val)
@@ -250,7 +267,7 @@ class JoyListener:
             elif self.drive_req >= 1.0:
                 #Now Drive
                 motor_pin_a.value = True
-                motor_pin_b.value = False
+                motor_pin_b.value = True
 
                 motor_val = self.m_out
                 motor_val = (motor_val) * 180
@@ -289,7 +306,7 @@ class JoyListener:
                 motor_pin_b.value = True
             elif self.drive_req <= -1.0:
                 #Now Drive
-                motor_pin_a.value = False
+                motor_pin_a.value = True
                 motor_pin_b.value = True
 
                 motor_val = self.m_out
@@ -317,16 +334,16 @@ class JoyListener:
             #Braking State
             if self.braking == True:
                 self.drive_req = 0
-                motor_pin_a.value = False
-                motor_pin_b.value = False
+                motor_pin_a.value = True
+                motor_pin_b.value = True
                 kit.servo[0].angle = 0
                 kit.servo[2].angle = 0
                 # print("Braking")
 
             #Idling State
             if self.drive_req == 0 and self.braking == False:
-                motor_pin_a.value = True
-                motor_pin_b.value = True
+                motor_pin_a.value = False
+                motor_pin_b.value = False
                 kit.servo[0].angle = 0 #self.m_in1
                 kit.servo[2].angle = 0 #self.m_in2
             #rospy.loginfo("Received joy message: %s", str(self.last_joy_message))
@@ -358,9 +375,9 @@ class JoyListener:
             #Cam Pitch State
             if self.cam_pitch == True:
                 #print(self.cp_out)
-                angle_max = 40
-                angle_min = 0
-                if self.cp_out >= 2.0 and self.cp_out <= 3.0: #2.0-3.0
+                angle_max = 160
+                angle_min = 140
+                if self.cp_out >= 2.0 and self.cp_out <= 3.2: #2.0-3.0
                     proj_ang = (self.cp_out - 2.0) * 160
                     
                     if proj_ang > self.cp_pos:

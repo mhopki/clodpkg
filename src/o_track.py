@@ -302,7 +302,7 @@ class POCont:
 	    	#truecy = 2.0
 	    	rev_off = (truecy - 2.0)
 	    	truecy = 3.0 - rev_off #FOR FLIPPED CAM
-	    	#print("1 zone")
+			#print("1 zone")
 	    elif 1.0 - (heading_error_gen / math.pi) != 1.0 :
 	    	#print("overextend")
 	    	truecy = (abs(abs((3.0 - (heading_error_gen / math.pi) + (self.cam_pose[1] - 2.0)) - 3.0) + 2.0) - 3.0) + 2.0
@@ -530,10 +530,10 @@ class POCont:
 						dumy = fixed_odom.pose.pose.position.y# + 10
 						dumz = fixed_odom.pose.pose.position.z# + 0
 					
-					#print("dumyCORDS: ", [dumx, dumy, dumz])
+					print("dumyCORDS: ", [dumx, dumy, dumz])
 
 					camx, camy = self.cam_orient(fixed_odom, dumx, dumy, dumz, kpx, kpy, kpz)
-					#print("camx:", camx, ", camy:", camy )
+					print("camx:", camx, ", camy:", camy )
 					#camx = 2.5
 					#camy = 2.0
 					self.cam_pose = [camx, camy]
@@ -656,8 +656,10 @@ class POCont:
 					if lin > 0.01: #0.01:
 						lin = 0.01
 				lin_out = lin_out + lin # + 0.2
-				if lin_out < 0.65: #15#0.85
-					lin_out = 0.65 #15#0.85
+
+				if lin_out < 0.1: #15#0.85
+					lin_out = 0.1 #15#0.85
+
 				if lin_out > 1.0:
 					lin_out = 1.0
 
@@ -727,7 +729,7 @@ class POCont:
 							self.photo_good = False
 							print("WE FLICKING UP FR!!!!!!!!")
 			elif self.HOLDON:
-
+				print("HOLDON")
 				senx = fixed_odom.pose.pose.position.x
 				seny = fixed_odom.pose.pose.position.y
 				senz = fixed_odom.pose.pose.position.z
@@ -754,6 +756,7 @@ class POCont:
 						print("MY LOC: ", self.sensor_locs_my)
 						
 						dist = self.calculate_distance(self.sensor_locs[-1][0], self.sensor_locs[-1][1], self.sensor_locs_my[-1][0], self.sensor_locs_my[-1][1])
+
 						if (False): #dist > 1.2 or dist < 0.7):
 							ang = self.angle(self.sensor_locs[-1][0], self.sensor_locs[-1][1], self.sensor_locs_my[-1][0], self.sensor_locs_my[-1][1])
 							#ang = self.angle(self.sensor_locs_my[-1][0], self.sensor_locs_my[-1][1], self.sensor_locs[-1][0], self.sensor_locs[-1][1])
@@ -859,6 +862,7 @@ class POCont:
 
 				if (self.has_target or True):
 					camx, camy, _, _, _ = self.cam_track(fixed_odom, kpx, kpy, kpz)
+
 					#camx = 2.5
 					#camy = 3.0#2.0
 					camx = 2.507
