@@ -10,7 +10,6 @@ import math                                   # Math operations
 import random                                 # For generating random numbers
 from std_msgs.msg import Float32MultiArray    # For multi-array messages
 import numpy as np                            # For numerical operations
-import argparse
 
 
 # Initialize button and axis codes for joystick mappings
@@ -48,50 +47,17 @@ class POCont:
         # Initialize the ROS node
         rospy.init_node('po_controller', anonymous=True)
 
-        # Get the parameter
-        #self.robot_number = rospy.get_param('/robot_number', 0)  # Use the actual name set earlier
-        #print(f"Received parameter: {self.robot_number}")
-
-        # Set up argument parser
-        parser = argparse.ArgumentParser(description='ROS Node with arguments')
-        parser.add_argument('--robot_number', type=int, required=True, help='The number of the robot')
-
-        # Use parse_known_args() to ignore unrecognized ROS arguments
-        args, unknown = parser.parse_known_args()
-
-        self.robot_number = args.robot_number
-
-        self.joy_pub_name = ['/joy','/joy1','/joy2','/joy3','/joy4']
-
         # Set up the publisher for joystick messages
-        self.joy_pub = rospy.Publisher(self.joy_pub_name[self.robot_number], Joy, queue_size=100)
-        #self.joy_pub1 = rospy.Publisher('/joy1', Joy, queue_size=100)
-        #self.joy_pub2 = rospy.Publisher('/joy2', Joy, queue_size=100)
-        #self.joy_pub3 = rospy.Publisher('/joy3', Joy, queue_size=100)
-        #self.joy_pub4 = rospy.Publisher('/joy4', Joy, queue_size=100)
-
-        self.odom_sub_name = ['/vicon/BEAST/odom','/vicon/BEAST_01/odom','/vicon/BEAST_02/odom','/vicon/BEAST_03/odom','/vicon/BEAST_04/odom']
+        self.joy_pub = rospy.Publisher('/joy', Joy, queue_size=100)
 
         # Subscribe to the odometry topic for receiving odometry data
-        self.odom_sub_topic = rospy.Subscriber(self.odom_sub_name[self.robot_number], Odometry, self.odom_callback, queue_size=1, tcp_nodelay=True)
-        #self.odom_sub_topic1 = rospy.Subscriber('/vicon/BEAST_01/odom', Odometry, self.odom_callback, queue_size=1, tcp_nodelay=True)
-        #self.odom_sub_topic2 = rospy.Subscriber('/vicon/BEAST_02/odom', Odometry, self.odom_callback, queue_size=1, tcp_nodelay=True)
-        #self.odom_sub_topic3 = rospy.Subscriber('/vicon/BEAST_03/odom', Odometry, self.odom_callback, queue_size=1, tcp_nodelay=True)
-        #self.odom_sub_topic4 = rospy.Subscriber('/vicon/BEAST_04/odom', Odometry, self.odom_callback, queue_size=1, tcp_nodelay=True)
-
-        
+        self.odom_sub_topic = rospy.Subscriber('/vicon/BEAST_02/odom', Odometry, self.odom_callback, queue_size=1, tcp_nodelay=True)
 
         # Subscribe to another odometry topic with a different callback
         #self.odom_sub = rospy.Subscriber(self.odom_sub_topic, Odometry, self.odom_callback_cam, queue_size=1, tcp_nodelay=True)
 
-        self.waypoint_sub_name = ['/waypoints','/waypoints1','/waypoints2','/waypoints3','/waypoints4']
-
         # Subscribe to the waypoints topic to receive target waypoints
-        self.waypoint_sub = rospy.Subscriber(self.waypoint_sub_name[self.robot_number], PoseStamped, self.waypoint_callback)
-        #self.waypoint_sub1 = rospy.Subscriber('/waypoints1', PoseStamped, self.waypoint_callback)
-        #self.waypoint_sub2 = rospy.Subscriber('/waypoints2', PoseStamped, self.waypoint_callback)
-        #self.waypoint_sub3 = rospy.Subscriber('/waypoints3', PoseStamped, self.waypoint_callback)
-        #self.waypoint_sub4 = rospy.Subscriber('/waypoints4', PoseStamped, self.waypoint_callback)
+        self.waypoint_sub = rospy.Subscriber('/waypoints', PoseStamped, self.waypoint_callback)
 
         # Initialize time, positions, and other variables
         self.last_received_time = rospy.Time.now()    # Last time a message was received
@@ -121,7 +87,6 @@ class POCont:
         self.r_theta = -100.0                         # Robot orientation angle
         self.prev_theta = -100.0                      # Previous robot orientation
         self.r_theta_cam = [90, 0]                    # Camera orientation for the robot
-        self.targ_vel = 0.1                            # Target velocity
 
         # Desired twist and other control parameters
         self.des_twist = [0, 0, 0, 0, 0, 0]           # Desired twist values
@@ -131,7 +96,8 @@ class POCont:
         self.des_turn = 0                             # Desired turning angle
         self.des_speed = 0.5                          # Desired speed
         self.des_swait = 0                            # Speed waiting parameter
-        self.g_thres = 0.3                            # Goal threshold
+        self.g_thres = 0.3                           # Goal threshold
+        self.targ_vel = 0.1
 
     # Callback for receiving odometry data
     def odom_callback(self, data):
@@ -160,10 +126,7 @@ class POCont:
     # Callback for receiving waypoints
     def waypoint_callback(self, data):
         print("way_coords: ", data.pose.position.x, data.pose.position.y)  # Print waypoint coordinates
-        self.g_loc = [data.pose.position.x, data.pose.position.y]
-        self.g_odom.pose.pose.position.x = self.g_loc[0]
-        self.g_odom.pose.pose.position.y = self.g_loc[1]  # Add waypoint to the list
-        self.targ_vel = data.pose.position.z #Z is read in as Target Velocity
+        self.waypoints.append(data)  # Add waypoint to the list
 
     # Pose callback (currently does nothing)
     def pose_callback(self, data):
@@ -224,12 +187,11 @@ class POCont:
     def calculate_desired_heading(self, current_pose, waypoint_pose):
         dx = waypoint_pose.pose.pose.position.x - current_pose.pose.pose.position.x  # Difference in x
         dy = waypoint_pose.pose.pose.position.y - current_pose.pose.pose.position.y  # Difference in y
-        return math.atan2(-dx, dy)  # Calculate heading angle #vicon coordinates: math.atan2(-dx, dy)
+        return math.atan2(-dx, dy)  # Calculate heading angle
 
     def calculate_desired_cmd(self, current_pose, waypoint_pose, kp_linear, kp_angular, targ_vel):
         # Calculate desired heading
         desired_heading = self.calculate_desired_heading(current_pose, waypoint_pose)
-        #print("desired_heading: ", desired_heading)
         
         # Calculate the difference between current and desired heading
         heading_error = desired_heading - (current_pose.pose.pose.orientation.z * math.pi)
@@ -282,12 +244,12 @@ class POCont:
     # Main update loop for the robot control
     def spin(self):
         # Set the loop rate to 1000 Hz
-        rate = rospy.Rate(1000)#
+        rate = rospy.Rate(1000)
 
         # Initialize variables for scanning direction, linear output, and target velocity
         scan_dir = 0
         lin_out = 0
-        targ_vel = self.targ_vel
+        #self.targ_vel = 0.1
 
         # Main loop that runs until ROS is shut down
         while not rospy.is_shutdown():
@@ -301,7 +263,7 @@ class POCont:
 
             # Define motion gains for linear and angular movement
             lingain = 1.0 * 0.00065  # Linear gain factor
-            anggain = 1.0 * 8.0#2.0     # Angular gain factor
+            anggain = 1.0 / (0.8 + ((fixed_odom.twist.twist.linear.y) / 2.5))#1.0 * 1.0 #2.0      # Angular gain factor
 
             # If no command has been sent recently (between 1 to 2 seconds), stop the robot
             if time_since_last_receive.to_sec() > 1.0 and time_since_last_receive.to_sec() < 2.0:
@@ -311,7 +273,7 @@ class POCont:
                 self.joy_msg.buttons = [0] * 12
 
             # Check if the robot is out of bounds (currently disabled by False condition)
-            if (False and (self.r_pos[0] < -2.0 or self.r_pos[0] > 2.0 or self.r_pos[1] > 9 or self.r_pos[1] < -2.0)):
+            if (False and (self.r_pos[0] < -9.0 or self.r_pos[0] > 9.0 or self.r_pos[1] > 9 or self.r_pos[1] < -2.0)):
                 # Send STOP commands if the robot is out of bounds
                 self.joy_msg = Joy()
                 self.joy_msg.axes = [0.0] * 8
@@ -321,15 +283,11 @@ class POCont:
             # If the robot is traveling towards the goal but has not reached it
             elif ((abs(self.r_pos[0] - self.g_loc[0]) > self.g_thres or abs(self.r_pos[1] - self.g_loc[1]) > self.g_thres) 
                   and self.g_met == False and self.g_loc[0] != -10):
-                #print("FOLLOW GOAL")
-                #print(self.r_pos)
-                #print(self.g_loc)
                 # Calculate the distance to the goal
                 dist = self.calculate_distance(self.r_pos[0], self.r_pos[1], self.g_loc[0], self.g_loc[1])
 
                 # Calculate desired linear and angular commands based on gains and target velocity
-                lin, ang = self.calculate_desired_cmd(fixed_odom, self.g_odom, lingain, anggain, targ_vel)
-                #print("ang_raw:  ", ang)
+                lin, ang = self.calculate_desired_cmd(fixed_odom, self.g_odom, lingain, anggain, self.targ_vel)
 
                 # Cap the turn radius to prevent overly sharp turns
                 if ang > 0.4:
@@ -337,14 +295,12 @@ class POCont:
                 if ang < -0.4:
                     ang = -0.4
 
-                #print("ang_fin:  ", ang)
-
                 # Soften the turn radius if close to the goal
                 if dist < self.g_thres * 1.2:
                     print(dist)
 
                 # Calculate desired linear velocity
-                lin = self.calc_des_vel(fixed_odom, lingain, targ_vel)
+                lin = self.calc_des_vel(fixed_odom, lingain, self.targ_vel)
 
                 # Smooth adjustments for linear velocity if it's negative or positive
                 if lin < 0:
@@ -359,10 +315,10 @@ class POCont:
                 lin_out = lin_out + lin
                 if lin_out < 0.1:
                     lin_out = 0.1
-                if lin_out > 1.0:
-                    lin_out = 1.0
+                if lin_out > 0.99:
+                    lin_out = 0.99
 
-                # Calculate front and rear angular outputs, capping them between -1.0 and 1.0
+                # Calculate forward and reverse angular outputs, capping them between -1.0 and 1.0
                 ang_out_f = -((ang / 2) + 0.025) * 4
                 if ang_out_f > 1.0:
                     ang_out_f = 1.0
@@ -388,7 +344,6 @@ class POCont:
             # If the robot has reached the goal or the goal has been met
             elif ((abs(self.r_pos[0] - self.g_loc[0]) <= self.g_thres and abs(self.r_pos[1] - self.g_loc[1]) <= self.g_thres) 
                   or self.g_met == True) and self.g_loc[0] != -10:
-                print("goal met")
                 # Goal met; reset variables
                 self.g_met = True
                 self.reset_point += 1
@@ -422,10 +377,10 @@ class POCont:
                         self.g_odom.pose.pose.position.y = self.g_loc[1]
                         self.reset_point = 0
                         self.g_met = False
+                        self.targ_vel = self.waypoints[0].pose.position.z
                         self.waypoints.pop(0)  # Remove the completed waypoint
                         print(self.g_loc)
             else:
-                print("IDLE ", self.robot_number)
                 # If there are no waypoint commands, the robot is in an idle state
                 if len(self.waypoints) > 0:
                     # Update goal location to current position
@@ -436,7 +391,7 @@ class POCont:
                 bag_testing = False
                 if bag_testing:
                     # Calculate desired velocity with constraints
-                    lin = self.calc_des_vel(fixed_odom, lingain, targ_vel)
+                    lin = self.calc_des_vel(fixed_odom, lingain, self.targ_vel)
                     if lin < 0:
                         lin /= 50
                     lin_out = lin_out + lin
@@ -466,7 +421,5 @@ if __name__ == "__main__":
     try:
         po_controller = POCont()  # Create POCont object
         po_controller.spin()
-        #while not rospy.is_shutdown():  # Loop until ROS is shut down
-        #    po_controller.update()     # Update robot control
     except rospy.ROSInterruptException:
         pass  # Handle ROS shutdown gracefully

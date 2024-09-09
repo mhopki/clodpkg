@@ -210,7 +210,7 @@ class JoyListener:
                 if servo_val < 0:
                     servo_val = 0
                 #print(servo_val, self.t_out, " t ", self.turning, self.t_out*1.1)
-                kit.servo[1].angle = servo_val
+                kit.servo[1].angle = servo_val #servo angle front
             else:
                 servo_val = 0 #self.t_out #0
                 offset = 10
@@ -222,7 +222,7 @@ class JoyListener:
                 #servo_val = 0 #18 #hard coded straight wheel angle
                 #print(servo_val, self.t_out, " nt ", self.turning)
                 #print("front: ", servo_val)
-                kit.servo[1].angle = servo_val
+                kit.servo[1].angle = servo_val #servo angle front
 
             #Rear Wheels Turning State
             if self.turning2 == True:
@@ -237,7 +237,7 @@ class JoyListener:
                     servo_val = 80
                 if servo_val < 0:
                     servo_val = 0
-                kit.servo[3].angle = servo_val
+                kit.servo[3].angle = servo_val #servo angle back
             else:
                 servo_val = 0 #self.t_out2 #0
                 servo_val = (servo_val + 1) * 40 + self.offset_wb #45 + 22 #59
@@ -248,7 +248,7 @@ class JoyListener:
                 #servo_val = 0 #15 #hard coded straight wheel angle
                 #print(servo_val, self.t_out2, " nt ", self.turning2)
                 #print("rear: ", servo_val)
-                kit.servo[3].angle = servo_val
+                kit.servo[3].angle = servo_val #servo angle back
 
 
             #Forward Driving State
