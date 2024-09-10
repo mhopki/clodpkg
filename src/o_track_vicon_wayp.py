@@ -237,7 +237,8 @@ class POCont:
         linear_distance = math.sqrt((waypoint_pose.pose.pose.position.x - current_pose.pose.pose.position.x)**2 + 
                                     (waypoint_pose.pose.pose.position.y - current_pose.pose.pose.position.y)**2)
 
-        linear_distance = targ_vel - (abs(current_pose.twist.twist.linear.x) + abs(current_pose.twist.twist.linear.y) + abs(current_pose.twist.twist.linear.z))
+        #linear_distance = targ_vel - (abs(current_pose.twist.twist.linear.x) + abs(current_pose.twist.twist.linear.y) + abs(current_pose.twist.twist.linear.z))
+        linear_distance = targ_vel - math.sqrt( current_pose.twist.twist.linear.x**2 + current_pose.twist.twist.linear.y**2 + current_pose.twist.twist.linear.z**2  ) 
         linear_velocity = kp_linear * linear_distance
         
         # Calculate angular velocity as a proportion of the heading error
@@ -248,7 +249,8 @@ class POCont:
     
     def calc_des_vel(self, current_pose, kp_linear, vel):
         targ_vel = vel
-        linear_distance = targ_vel - (abs(current_pose.twist.twist.linear.x) + abs(current_pose.twist.twist.linear.y) + abs(current_pose.twist.twist.linear.z))
+        #linear_distance = targ_vel - (abs(current_pose.twist.twist.linear.x) + abs(current_pose.twist.twist.linear.y) + abs(current_pose.twist.twist.linear.z))
+        linear_distance = targ_vel - math.sqrt( current_pose.twist.twist.linear.x**2 + current_pose.twist.twist.linear.y**2 + current_pose.twist.twist.linear.z**2  ) 
         linear_velocity = kp_linear * linear_distance
         return linear_velocity
 
@@ -284,8 +286,10 @@ class POCont:
             fixed_odom.pose.pose.orientation.z = self.r_theta  # Update the robot's orientation angle
 
             # Define motion gains for linear and angular movement
-            lingain = 1.0 * 0.00065  # Linear gain factor
-            anggain = 1.0 / (0.8 + ((fixed_odom.twist.twist.linear.y) / 0.5))#1.0 * 1.0 #2.0      # Angular gain factor
+            lingain = 1.0 * 0.00055#0.00065  # Linear gain factor
+            speed = math.sqrt( fixed_odom.twist.twist.linear.x**2 + fixed_odom.twist.twist.linear.y**2 + fixed_odom.twist.twist.linear.z**2  )
+            anggain = 1.0 / (0.7 + (speed / 0.7))
+            #anggain = 1.0 / (0.8 + ((fixed_odom.twist.twist.linear.y) / 0.5))#1.0 * 1.0 #2.0      # Angular gain factor
 
             # If no command has been sent recently (between 1 to 2 seconds), stop the robot
             if time_since_last_receive.to_sec() > 1.0 and time_since_last_receive.to_sec() < 2.0:

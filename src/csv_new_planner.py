@@ -305,8 +305,8 @@ def send_waypoints(path, way_pub):
 			way_out.pose.position.z = np.linalg.norm(sparse_velocities[i])
 			if (np.linalg.norm(sparse_velocities[i])/2.5) < 0.1:
 				way_out.pose.position.z = 0.1
-			if (np.linalg.norm(sparse_velocities[i])/2.5) > 0.5:
-				way_out.pose.position.z = 0.5
+			if (np.linalg.norm(sparse_velocities[i])/2.5) > 0.9:
+				way_out.pose.position.z = 0.9
 			way_pub[jj].publish(way_out)
 			print(positions[i])
 
