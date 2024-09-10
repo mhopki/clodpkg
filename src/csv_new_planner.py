@@ -253,59 +253,71 @@ def plot_path(path):
 	plt.plot(x_vals, y_vals, '-bo')
 
 def send_waypoints(path, way_pub):
-	my_data = genfromtxt('traj_0c.csv', delimiter=',')
-	my_data = my_data[1:]
-	times = my_data[:,0]
-	positions = my_data[:,1:3]
-	velocities = my_data[:,3:5]
+	csv_names = []
+	csv_names.append('traj_0.csv')#0
+	csv_names.append('traj_0.csv')#1
+	csv_names.append('traj_0_newc.csv')#2
+	csv_names.append('traj_1_newc.csv')#3
+	csv_names.append('traj_0.csv')#4
+	for jj in range(0,5):
+		my_data = genfromtxt(csv_names[jj], delimiter=',')
+		my_data = my_data[1:]
+		times = my_data[:,0]
+		positions = my_data[:,1:3]
+		velocities = my_data[:,3:5]
 
-	min_dist = 0.01
-	
-	sparse_positions = []
-	sparse_velocities = []
-	sparse_times = [] 
-	
-	i = 0
-	sparse_positions.append(positions[0])
-	sparse_velocities.append(velocities[0])
-	sparse_times.append(times[0])
-	
-	dist_increment = 0
-	last_added_i = 0
-	for i in range(1, len(times)):
-		dist_increment += np.linalg.norm(positions[i] - positions[i-1])
-		if dist_increment >= min_dist :
-			sparse_positions.append(positions[i])
-			sparse_velocities.append(velocities[i])
-			sparse_times.append(times[i])
-			dist_increment = 0 
-			last_added_i = i 
-	
-	if last_added_i < len(times)-1:
-		sparse_positions.append(positions[len(times)-1])
-		sparse_velocities.append(velocities[len(times)-1])
-		sparse_times.append(times[len(times)-1])
-	
-	sparse_positions = np.array(sparse_positions)
-	sparse_velocities = np.array(sparse_velocities)
-	sparse_times = np.array(sparse_times)
+		min_dist = 0.01
+		
+		sparse_positions = []
+		sparse_velocities = []
+		sparse_times = [] 
+		
+		i = 0
+		sparse_positions.append(positions[0])
+		sparse_velocities.append(velocities[0])
+		sparse_times.append(times[0])
+		
+		dist_increment = 0
+		last_added_i = 0
+		for i in range(1, len(times)):
+			dist_increment += np.linalg.norm(positions[i] - positions[i-1])
+			if dist_increment >= min_dist :
+				sparse_positions.append(positions[i])
+				sparse_velocities.append(velocities[i])
+				sparse_times.append(times[i])
+				dist_increment = 0 
+				last_added_i = i 
+		
+		if last_added_i < len(times)-1:
+			sparse_positions.append(positions[len(times)-1])
+			sparse_velocities.append(velocities[len(times)-1])
+			sparse_times.append(times[len(times)-1])
+		
+		sparse_positions = np.array(sparse_positions)
+		sparse_velocities = np.array(sparse_velocities)
+		sparse_times = np.array(sparse_times)
 
-	for i in range(len(sparse_positions) - 1):
-		#max_i = 0
-		way_out = PoseStamped()
-		way_out.pose.position.x = sparse_positions[i][0] - sparse_positions[0][0] + 0 - 1.5
-		way_out.pose.position.y = sparse_positions[i][1] - sparse_positions[0][1] + 2.5# - sparse_positions[0][0]
-		way_out.pose.position.z = np.linalg.norm(sparse_velocities[i])
-		if (np.linalg.norm(sparse_velocities[i])/2.5) < 0.05:
-			way_out.pose.position.z = 0.05
-		#if (np.linalg.norm(sparse_velocities[i])/2.5) > :
-		#	way_out.pose.position.z = 0.8
-		way_pub.publish(way_out)
-		print(positions[i])
+		for i in range(len(sparse_positions) - 1):
+			#max_i = 0
+			way_out = PoseStamped()
+			way_out.pose.position.x = sparse_positions[i][0]# - sparse_positions[0][0] + 0 #- 1.5
+			way_out.pose.position.y = sparse_positions[i][1]# + 2.5# - sparse_positions[0][1] + 2.5# - sparse_positions[0][0]
+			way_out.pose.position.z = np.linalg.norm(sparse_velocities[i])
+			if (np.linalg.norm(sparse_velocities[i])/2.5) < 0.1:
+				way_out.pose.position.z = 0.1
+			if (np.linalg.norm(sparse_velocities[i])/2.5) > 0.5:
+				way_out.pose.position.z = 0.5
+			way_pub[jj].publish(way_out)
+			print(positions[i])
 
 def main():
 	rospy.init_node('rrt_planner', anonymous=True)
-	way_pub = rospy.Publisher('/waypoints', PoseStamped, queue_size=100)
+	way_pub = []
+	way_pub.append(rospy.Publisher('/waypoints', PoseStamped, queue_size=100))
+	way_pub.append(rospy.Publisher('/waypoints1', PoseStamped, queue_size=100))
+	way_pub.append(rospy.Publisher('/waypoints2', PoseStamped, queue_size=100))
+	way_pub.append(rospy.Publisher('/waypoints3', PoseStamped, queue_size=100))
+	way_pub.append(rospy.Publisher('/waypoints4', PoseStamped, queue_size=100))
 	start = (0,0,0)#(0,0,0)#(9, 1, 3.14)  # Define start point
 	goal = ((1.4),(10),0)#((1.4*2*3),(10*2*1.5),0)#(3,10,0)#(6,25,0)#(3,5,0) #(10, 25, 0)   # Define goal point
 	mapsize = (7,4)#(15,40)#(40,15)#(7,4)#(40,15)

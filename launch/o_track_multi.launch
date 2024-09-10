@@ -5,28 +5,28 @@
     <arg name="r_num" default="1" />
 
     <group if="$(eval arg('r_num') == 1)">
-        <node pkg="clod_pkg" type="o_track_vicon_const.py" name="o_track_1" output="screen" args="--robot_number 1"/>
+        <node pkg="clod_pkg" type="o_track_vicon_wayp.py" name="o_track_1" output="screen" args="--robot_number 1"/>
     </group>
 
     <!-- Run the second instance -->
     <group if="$(eval arg('r_num') == 2)">
-        <node pkg="clod_pkg" type="o_track_vicon_const.py" name="o_track_1" output="screen" args="--robot_number 1"/>
-        <node pkg="clod_pkg" type="o_track_vicon_const.py" name="o_track_2" output="screen" args="--robot_number 2"/>
+        <node pkg="clod_pkg" type="o_track_vicon_wayp.py" name="o_track_1" output="screen" args="--robot_number 1"/>
+        <node pkg="clod_pkg" type="o_track_vicon_wayp.py" name="o_track_2" output="screen" args="--robot_number 2"/>
     </group>
 
     <!-- Run the third instance -->
     <group if="$(eval arg('r_num') == 3)">
-        <node pkg="clod_pkg" type="o_track_vicon_const.py" name="o_track_1" output="screen" args="--robot_number 1"/>
-        <node pkg="clod_pkg" type="o_track_vicon_const.py" name="o_track_2" output="screen" args="--robot_number 2"/>
-        <node pkg="clod_pkg" type="o_track_vicon_const.py" name="o_track_3" output="screen" args="--robot_number 3"/>
+        <node pkg="clod_pkg" type="o_track_vicon_wayp.py" name="o_track_1" output="screen" args="--robot_number 1"/>
+        <node pkg="clod_pkg" type="o_track_vicon_wayp.py" name="o_track_2" output="screen" args="--robot_number 2"/>
+        <node pkg="clod_pkg" type="o_track_vicon_wayp.py" name="o_track_3" output="screen" args="--robot_number 3"/>
     </group>
 
     <!-- Run the fourth instance -->
     <group if="$(eval arg('r_num') == 4)">
-        <node pkg="clod_pkg" type="o_track_vicon_const.py" name="o_track_1" output="screen" args="--robot_number 1"/>
-        <node pkg="clod_pkg" type="o_track_vicon_const.py" name="o_track_2" output="screen" args="--robot_number 2"/>
-        <node pkg="clod_pkg" type="o_track_vicon_const.py" name="o_track_3" output="screen" args="--robot_number 3"/>
-        <node pkg="clod_pkg" type="o_track_vicon_const.py" name="o_track_4" output="screen" args="--robot_number 4"/>
+        <node pkg="clod_pkg" type="o_track_vicon_wayp.py" name="o_track_1" output="screen" args="--robot_number 1"/>
+        <node pkg="clod_pkg" type="o_track_vicon_wayp.py" name="o_track_2" output="screen" args="--robot_number 2"/>
+        <node pkg="clod_pkg" type="o_track_vicon_wayp.py" name="o_track_3" output="screen" args="--robot_number 3"/>
+        <node pkg="clod_pkg" type="o_track_vicon_wayp.py" name="o_track_4" output="screen" args="--robot_number 4"/>
     </group>
 
 </launch>

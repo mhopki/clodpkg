@@ -10,6 +10,7 @@ import math                                   # Math operations
 import random                                 # For generating random numbers
 from std_msgs.msg import Float32MultiArray    # For multi-array messages
 import numpy as np                            # For numerical operations
+import argparse
 
 
 # Initialize button and axis codes for joystick mappings
@@ -47,17 +48,38 @@ class POCont:
         # Initialize the ROS node
         rospy.init_node('po_controller', anonymous=True)
 
+        # Set up argument parser
+        parser = argparse.ArgumentParser(description='ROS Node with arguments')
+        parser.add_argument('--robot_number', type=int, required=True, help='The number of the robot')
+
+        # Use parse_known_args() to ignore unrecognized ROS arguments
+        args, unknown = parser.parse_known_args()
+
+        self.robot_number = args.robot_number
+
+        self.joy_pub_name = ['/joy','/joy1','/joy2','/joy3','/joy4']
+
         # Set up the publisher for joystick messages
-        self.joy_pub = rospy.Publisher('/joy', Joy, queue_size=100)
+        ##self.joy_pub = rospy.Publisher('/joy', Joy, queue_size=100)
+        # Set up the publisher for joystick messages
+        self.joy_pub = rospy.Publisher(self.joy_pub_name[self.robot_number], Joy, queue_size=100)
+
+        self.odom_sub_name = ['/vicon/BEAST/odom','/vicon/BEAST_01/odom','/vicon/BEAST_02/odom','/vicon/BEAST_03/odom','/vicon/BEAST_04/odom']
 
         # Subscribe to the odometry topic for receiving odometry data
-        self.odom_sub_topic = rospy.Subscriber('/vicon/BEAST_02/odom', Odometry, self.odom_callback, queue_size=1, tcp_nodelay=True)
+        ###self.odom_sub_topic = rospy.Subscriber('/vicon/BEAST_02/odom', Odometry, self.odom_callback, queue_size=1, tcp_nodelay=True)
+        self.odom_sub_topic = rospy.Subscriber(self.odom_sub_name[self.robot_number], Odometry, self.odom_callback, queue_size=1, tcp_nodelay=True)
 
         # Subscribe to another odometry topic with a different callback
         #self.odom_sub = rospy.Subscriber(self.odom_sub_topic, Odometry, self.odom_callback_cam, queue_size=1, tcp_nodelay=True)
 
         # Subscribe to the waypoints topic to receive target waypoints
-        self.waypoint_sub = rospy.Subscriber('/waypoints', PoseStamped, self.waypoint_callback)
+        #self.waypoint_sub = rospy.Subscriber('/waypoints', PoseStamped, self.waypoint_callback)
+
+        self.waypoint_sub_name = ['/waypoints','/waypoints1','/waypoints2','/waypoints3','/waypoints4']
+
+        # Subscribe to the waypoints topic to receive target waypoints
+        self.waypoint_sub = rospy.Subscriber(self.waypoint_sub_name[self.robot_number], PoseStamped, self.waypoint_callback)
 
         # Initialize time, positions, and other variables
         self.last_received_time = rospy.Time.now()    # Last time a message was received
@@ -125,7 +147,7 @@ class POCont:
 
     # Callback for receiving waypoints
     def waypoint_callback(self, data):
-        print("way_coords: ", data.pose.position.x, data.pose.position.y)  # Print waypoint coordinates
+        print("way_coords[", self.robot_number, "]: ", data.pose.position.x, data.pose.position.y)  # Print waypoint coordinates
         self.waypoints.append(data)  # Add waypoint to the list
 
     # Pose callback (currently does nothing)
@@ -263,7 +285,7 @@ class POCont:
 
             # Define motion gains for linear and angular movement
             lingain = 1.0 * 0.00065  # Linear gain factor
-            anggain = 1.0 / (0.8 + ((fixed_odom.twist.twist.linear.y) / 2.5))#1.0 * 1.0 #2.0      # Angular gain factor
+            anggain = 1.0 / (0.8 + ((fixed_odom.twist.twist.linear.y) / 0.5))#1.0 * 1.0 #2.0      # Angular gain factor
 
             # If no command has been sent recently (between 1 to 2 seconds), stop the robot
             if time_since_last_receive.to_sec() > 1.0 and time_since_last_receive.to_sec() < 2.0:
@@ -381,6 +403,7 @@ class POCont:
                         self.waypoints.pop(0)  # Remove the completed waypoint
                         print(self.g_loc)
             else:
+                #print("IDLE ", self.robot_number)
                 # If there are no waypoint commands, the robot is in an idle state
                 if len(self.waypoints) > 0:
                     # Update goal location to current position

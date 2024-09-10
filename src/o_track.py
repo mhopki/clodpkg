@@ -48,8 +48,8 @@ r_atc = {value: key for key, value in axis_codes.items()}
 class POCont:
 	def __init__(self):
 		rospy.init_node('po_controller', anonymous=True)
-		self.odom_sub_topic = '/odometry/filtered_map'#'/camera/odom/sample'#'fused_localization'#'/camera/odom/sample'
-		self.odom_topics = ['/odometry/filtered_map', '/camera/odom/sample', 'fused_localization']
+		self.odom_sub_topic = '/camera/odom/sample'#'/odometry/filtered_map'#'/camera/odom/sample'#'fused_localization'#'/camera/odom/sample'
+		self.odom_topics = ['/camera/odom/sample','/odometry/filtered_map', '/camera/odom/sample', 'fused_localization']
 		self.joy_pub = rospy.Publisher('/joy', Joy, queue_size=100)
 		#self.odom_sub = rospy.Subscriber('/vicon/BEAST/odom', Odometry, self.odom_callback, queue_size=1, tcp_nodelay=True)
 		self.odom_sub = rospy.Subscriber(self.odom_sub_topic, Odometry, self.odom_callback_cam, queue_size=1, tcp_nodelay=True)
@@ -569,7 +569,7 @@ class POCont:
 			fixed_odom.pose.pose.orientation.z = self.r_theta #r_theta is robot orientation
 
 			#motion gains
-			lingain = 1.0 * 0.00065#0.00055#4#4#0.01#3.0 * 6#3.0#1.5
+			lingain = 1.0 * 0.00065#0.00065#0.00055#4#4#0.01#3.0 * 6#3.0#1.5
 			anggain = 1.0 * 2.0#8.0 * 20#20#8.0#5.0#3.0
 			
 			#cam heading gains
