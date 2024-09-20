@@ -334,12 +334,12 @@ class POCont:
 
                 # Smooth adjustments for linear velocity if it's negative or positive
                 if lin < 0:
-                    lin *= 1.9 #2.2 #1 perf:2.5 #0.5: 1.5
+                    lin *= 1.5 #2.2 #1 perf:2.5 #0.5: 1.5
                     if lin < -0.01:
                         lin = -0.01
                 if lin > 0:
                     #lin / = 2
-                    lin *= 1.9 #2.2 #1 perf:2.5 #0.5: 4.5 #1.5
+                    lin *= 1.5 #2.2 #1 perf:2.5 #0.5: 4.5 #1.5
                     if lin > 0.01:
                         lin = 0.01
 

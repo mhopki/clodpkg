@@ -403,7 +403,7 @@ class POCont:
                         self.joy_msg.axes[r_atc["ABS_RZ"]] = 0
                         self.joy_msg.axes[r_atc["ABS_Z"]] = 0
                         self.joy_pub.publish(self.joy_msg)  # Publish stop command
-                        self.g_loc = [-10, -10]             # Reset goal location
+                        self.g_loc = [-10, -11]             # Reset goal location
                         continue
 
                         # Generate new random goal location
@@ -452,6 +452,8 @@ class POCont:
                 self.joy_msg.axes[r_atc["ABS_HAT0Y"]] = 0
                 self.joy_msg.axes[r_atc["ABS_X"]] = 0
                 self.joy_msg.axes[r_atc["ABS_RX"]] = 0
+                if self.g_loc == [-10, -11]:
+                    self.joy_msg.axes[r_atc["BTN_EAST"]] = 1
 
             # Publish the joystick message if the time since last command is less than 2 seconds
             if time_since_last_receive.to_sec() < 2.0:

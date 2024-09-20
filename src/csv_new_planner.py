@@ -256,9 +256,9 @@ def send_waypoints(path, way_pub):
 	csv_names = []
 	csv_names.append('traj_0.csv')#0
 	csv_names.append('traj_0.csv')#1
-	csv_names.append('traj_0_newc.csv')#2
-	csv_names.append('traj_1_newc.csv')#3
-	csv_names.append('traj_0.csv')#4
+	csv_names.append('ag_3_fin_v_1_a_1_traj_1.csv')#2
+	csv_names.append('ag_3_fin_v_1_a_1_traj_0.csv')#3
+	csv_names.append('ag_3_fin_v_1_a_1_traj_2.csv')#4
 	for jj in range(0,5):
 		my_data = genfromtxt(csv_names[jj], delimiter=',')
 		my_data = my_data[1:]
@@ -303,10 +303,10 @@ def send_waypoints(path, way_pub):
 			way_out.pose.position.x = sparse_positions[i][0]# - sparse_positions[0][0] + 0 #- 1.5
 			way_out.pose.position.y = sparse_positions[i][1]# + 2.5# - sparse_positions[0][1] + 2.5# - sparse_positions[0][0]
 			way_out.pose.position.z = np.linalg.norm(sparse_velocities[i])
-			if (np.linalg.norm(sparse_velocities[i])/2.5) < 0.1:
-				way_out.pose.position.z = 0.1
-			if (np.linalg.norm(sparse_velocities[i])/2.5) > 0.9:
-				way_out.pose.position.z = 0.9
+			if (np.linalg.norm(sparse_velocities[i])) < 0.005:
+				way_out.pose.position.z = 0.005
+			if (np.linalg.norm(sparse_velocities[i])) > 2:
+				way_out.pose.position.z = 2
 			way_pub[jj].publish(way_out)
 			print(positions[i])
 

@@ -290,7 +290,7 @@ class POCont:
             # Define motion gains for linear and angular movement
             lingain = 1.0 * 0.00055#0.00065  # Linear gain factor
             speed = math.sqrt( fixed_odom.twist.twist.linear.x**2 + fixed_odom.twist.twist.linear.y**2 + fixed_odom.twist.twist.linear.z**2  )
-            anggain = 1.0 * (1.0 - (np.clip((speed - 0.6),0,2.0) * 0.65)) #0.65 #0.68 #<- new pefrect 1.5 #0.65#0.6 <- 1.0#1.5 perfect:1.0 * (1.0 - (np.clip((speed - 0.6),0,2.0) * 0.72))#02: 1.0
+            anggain = 1.0 * (1.0 - (np.clip((speed - 0.6),0,2.0) * 0.68)) #0.65 #0.68 #<- new pefrect 1.5 #0.65#0.6 <- 1.0#1.5 perfect:1.0 * (1.0 - (np.clip((speed - 0.6),0,2.0) * 0.72))#02: 1.0
             #print("SPEED: ", speed)
             #print("ANG: ", anggain)
             #anggain = 1.0 / (0.8 + ((fixed_odom.twist.twist.linear.y) / 0.5))#1.0 * 1.0 #2.0      # Angular gain factor
@@ -334,12 +334,12 @@ class POCont:
 
                 # Smooth adjustments for linear velocity if it's negative or positive
                 if lin < 0:
-                    lin *= 1.9 #2.2 #1 perf:2.5 #0.5: 1.5
+                    lin *= 2.2 #1 perf:2.5 #0.5: 1.5
                     if lin < -0.01:
                         lin = -0.01
                 if lin > 0:
                     #lin / = 2
-                    lin *= 1.9 #2.2 #1 perf:2.5 #0.5: 4.5 #1.5
+                    lin *= 2.2 #1 perf:2.5 #0.5: 4.5 #1.5
                     if lin > 0.01:
                         lin = 0.01
 
@@ -351,7 +351,7 @@ class POCont:
                     lin_out = 0.99
 
                 # Calculate forward and reverse angular outputs, capping them between -1.0 and 1.0
-                ang_out_f = -((ang / 2) + 0.025) * 4
+                ang_out_f = -((ang / 2) - 0.028) *4# + 0.025) * 4
                 if ang_out_f > 1.0:
                     ang_out_f = 1.0
                 if ang_out_f < -1.0:
