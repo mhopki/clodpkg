@@ -416,15 +416,7 @@ def main():
     if path:
 
         #print("Path:", path[::-1])
-        #send_waypoints(path, way_pub)
-
-        #for i in range(len(path)):
-        #max_i = len(path) - 1
-        way_out = PoseStamped()
-        way_out.pose.position.x = 2#path[max_i - i][0]
-        way_out.pose.position.y = 0#path[max_i - i][1]
-        way_pub.publish(way_out)
-        #print(path[max_i - i])
+        send_waypoints(path, way_pub)
         
         # Plot obstacles and path
         plt.figure()
