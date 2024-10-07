@@ -47,19 +47,23 @@ r_atc = {value: key for key, value in axis_codes.items()}
 
 class POCont:
 	def __init__(self):
-		rospy.init_node('po_controller', anonymous=True)
+		rospy.init_node('po_controller', anonymous=True) #SET QUEUESIZE TO 1
 		self.odom_sub_topic = '/camera/odom/sample'#'/odometry/filtered_map'#'/camera/odom/sample'#'fused_localization'#'/camera/odom/sample'
 		self.odom_topics = ['/camera/odom/sample','/odometry/filtered_map', '/camera/odom/sample', 'fused_localization']
-		self.joy_pub = rospy.Publisher('/joy', Joy, queue_size=100)
+		self.joy_pub = rospy.Publisher('/joy', Joy, queue_size=100) #delete queue_size = 1
 		#self.odom_sub = rospy.Subscriber('/vicon/BEAST/odom', Odometry, self.odom_callback, queue_size=1, tcp_nodelay=True)
 		self.odom_sub = rospy.Subscriber(self.odom_sub_topic, Odometry, self.odom_callback_cam, queue_size=1, tcp_nodelay=True)
 		self.waypoint_sub = rospy.Subscriber('/waypoints', PoseStamped, self.waypoint_callback)
 		#pose_sub = rospy.Subscriber('/vicon/BEAST/pose', PoseStamped, pose_callback, queue_size=1, tcp_nodelay=True)
 		self.target_sub = rospy.Subscriber('/object_world_coordinates', Float32MultiArray, self.world_coordinates_callback)
-		self.photo_pub = rospy.Publisher('/take_photo', Float32MultiArray, queue_size=10)
+		self.photo_pub = rospy.Publisher('/take_photo', Float32MultiArray, queue_size=10) #change to separate names for hyper and robot
 		self.photo_sub = rospy.Subscriber('/take_photo', Float32MultiArray, self.photo_callback)
 
 		self.last_received_time = rospy.Time.now()
+
+		#USE PAN TILT CAMERA:
+		#kalman filter to estimate location of sensor with size prior
+		#or use multiple images to find the depth
 
 		self.current_waypoint = None
 		self.distance_threshold = 0.2
@@ -569,7 +573,7 @@ class POCont:
 			fixed_odom.pose.pose.orientation.z = self.r_theta #r_theta is robot orientation
 
 			#motion gains
-			lingain = 1.0 * 0.00065#0.00065#0.00055#4#4#0.01#3.0 * 6#3.0#1.5
+			lingain = 1.0 * 0.0002#0.00065#0.00065#0.00055#4#4#0.01#3.0 * 6#3.0#1.5
 			anggain = 1.0 * 2.0#8.0 * 20#20#8.0#5.0#3.0
 			
 			#cam heading gains
