@@ -609,11 +609,12 @@ class POCont:
 				lin = self.calc_des_vel(fixed_odom, lingain, targ_vel)
 				#How largely the throttle command decreases
 				if lin < 0:
-					lin /= 50
+					lin /= 50 #decrease or increase if desired to make robot decelerate faster
 					if lin < -0.01: #0.01:
 						lin = -0.01
 				#How largely the throttle command increases
 				if lin > 0:
+					lin /= 1 #decrease or increase if desired to make robot accelerate faster
 					if lin > 0.01: #0.01:
 						lin = 0.01
 				lin_out = lin_out + lin # + 0.2

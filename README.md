@@ -1,7 +1,27 @@
-# clodpkg
+# clod_pkg
 
-Control for clodbuster car
+Package for controlling the BEAST robot platform
 
+>Branches To Use:
+>>Computer: new-com
+>>Robot: new-rob
+
+How to use TMUX:
+
+>Computer:
+>>run ./tmux_com.sh
+>>Nothing runs on its own, but set up the prompt for you. Navigate to the desired tab and press enter to run the already written prompt.
+
+>Robot:
+>>run ./tmux_robot.sh
+>>Everything runs on its own, Navigate to the desired tab to kill what you dont want running
+
+
+
+
+
+
+INSTALL ON ROBOT:
 
 >Install spinnaker sdk:
 
