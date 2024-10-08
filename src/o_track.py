@@ -607,12 +607,12 @@ class POCont:
 
 
 				lin = self.calc_des_vel(fixed_odom, lingain, targ_vel)
-				#linear gain derease ratio
+				#How largely the throttle command decreases
 				if lin < 0:
 					lin /= 50
 					if lin < -0.01: #0.01:
 						lin = -0.01
-				#linear gain increase ratio
+				#How largely the throttle command increases
 				if lin > 0:
 					if lin > 0.01: #0.01:
 						lin = 0.01
@@ -708,46 +708,7 @@ class POCont:
 						
 						#dist = self.calculate_distance(self.sensor_locs[-1][0], self.sensor_locs[-1][1], self.sensor_locs_my[-1][0], self.sensor_locs_my[-1][1])
 
-						if (False):#IGNORE THIS it is now obsolete after changes to the robot  #dist > 1.2 or dist < 0.7):
-							ang = self.angle(self.sensor_locs[-1][0], self.sensor_locs[-1][1], self.sensor_locs_my[-1][0], self.sensor_locs_my[-1][1])
-							#ang = self.angle(self.sensor_locs_my[-1][0], self.sensor_locs_my[-1][1], self.sensor_locs[-1][0], self.sensor_locs[-1][1])
-							#ang = self.r_odom.pose.pose.orientation.z + 3.14
-							print("ANGLE: ", ang)
-							rrx, rry = self.calculate_point(self.sensor_locs_my[-1][0], self.sensor_locs_my[-1][1], 1.5, ang)
-							rrx2, rry2 = self.calculate_point(self.sensor_locs_my[-1][0], self.sensor_locs_my[-1][1], 1.0, ang)
-							#retloc = [rrx, rry]
-							retloc = PoseStamped()
-							retloc.pose.position.x = rrx
-							retloc.pose.position.y = rry
-							retloc2 = PoseStamped()
-							retloc2.pose.position.x = rrx2
-							retloc2.pose.position.y = rry2
-							myloc = PoseStamped()
-							myloc.pose.position.x = self.sensor_locs_my[-1][0]
-							myloc.pose.position.y = self.sensor_locs_my[-1][1]
-							currgo = PoseStamped()
-							currgo.pose.position.x = self.g_loc[0]
-							currgo.pose.position.y = self.g_loc[1]
-							#retloc2 = [rrx2, rry2]
-							#test = []
-							#test.append(retloc)
-							#test.append(retloc2)
-							#test.append([self.sensor_locs_my[-1][0], self.sensor_locs_my[-1][1]])
-							#test.append(self.waypoints)
-							#self.waypoints = test
-							self.waypoints.insert(0,currgo)
-							#self.waypoints.insert(0,myloc)
-							self.waypoints.insert(0,retloc2)
-							self.waypoints.insert(0,retloc)
-							self.g_loc[0] = rrx2
-							self.g_loc[1] = rry2
-							print("GOAL: ", self.g_loc)
-							print("MY: ", self.sensor_locs_my[-1])
-							print("RETM: ", (rrx2,rry2))
-							print("WYPS: ", self.waypoints)
-							print("RETREAT TO VIEW IT AGAIN")
-							self.retreating = 2#3"""
-						else:
+						if (True):
 							#Start taking Hyperspectral pic and send photo message to the Hyperspectral
 							photo_msg = Float32MultiArray(data=[0])
 							self.photo_pub.publish(photo_msg)
