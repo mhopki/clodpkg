@@ -569,7 +569,7 @@ class POCont:
 					if self.odom_sub_topic == self.odom_topics[0]:
 						self.odom_switch -= 1
 						#print("still odom")
-						if self.odom_switch <= 0: #switches from one odom topic to the next in the list
+						if self.odom_switch <= 0: #switches from one odom topic to the next in the list MAY BE NECESSARY TO USE COMMENTED CODE BELOW
 							xxxx= 0
 							#print("switch to fused")
 							#self.odom_sub_topic = self.odom_topics[1]
@@ -685,7 +685,6 @@ class POCont:
 
 			elif self.HOLDON:
 				print("HOLDON")
-				#SENX IS THE SAME AS SEN LOCS MY
 				camx, camy, senx, seny, senz = self.cam_track(fixed_odom, kpx, kpy, kpz)
 
 				#set camera to fixed homography position
@@ -737,8 +736,6 @@ class POCont:
 				if self.joy_msg.axes[r_atc["ABS_Z"]] <= 0.01:
 					self.joy_msg.axes[r_atc["ABS_Z"]] = 0
 
-				#self.joy_msg.axes[r_atc["ABS_X"]] = 0.1#ang_out_f
-				#self.joy_msg.axes[r_atc["ABS_RX"]] = 0#-ang_out_r
 			elif self.RETREATPIC:
 				#Taking hyperspectral photo, and waiting for message that picture was successful
 
@@ -753,11 +750,6 @@ class POCont:
 					#x = self.wcoor[25]
 
 				self.last_received_time = rospy.Time.now()
-				#self.joy_msg = Joy()
-				#self.joy_msg.axes = [0.0] * 8
-				#self.joy_msg.buttons = [0] * 12
-				#self.joy_msg.axes[r_atc["ABS_HAT0X"]] = camx
-				#self.joy_msg.axes[r_atc["ABS_HAT0Y"]] = camy
 
 				#SLOW DOWN ROBOT WHETHER ITS GOING BACKWARD OR FORWARD
 				if self.joy_msg.axes[r_atc["ABS_RZ"]] > 0:
@@ -768,9 +760,6 @@ class POCont:
 					self.joy_msg.axes[r_atc["ABS_Z"]] -= 0.01
 				if self.joy_msg.axes[r_atc["ABS_Z"]] <= 0.01:
 					self.joy_msg.axes[r_atc["ABS_Z"]] = 0
-
-				#self.joy_msg.axes[r_atc["ABS_X"]] = 0.1#ang_out_f
-				#self.joy_msg.axes[r_atc["ABS_RX"]] = 0#-ang_out_r
 			else:
 				x = 0
 				#No waypoint commands, Idle state
@@ -798,9 +787,6 @@ class POCont:
 						scan_dir -= 2 * math.pi
 					elif scan_dir < -math.pi:
 						scan_dir += 2 * math.pi
-					#print("dummy_dir: ", dumx, dumy, scan_dir)
-				#camx, camy = self.cam_orient(fixed_odom, 0, 1, kpx, kpy)
-				#print("cur_pos: ", self.r_theta)
 
 				if len(self.waypoints) > 0: #CHECK IF WAYPOINTS EXIST TO START FOLLOWING
 					self.g_loc[0] = self.r_pos[0]
