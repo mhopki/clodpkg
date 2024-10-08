@@ -122,18 +122,22 @@ class POCont:
 		self.photo_good = False #Did the hyperspectral successfully take a picture
 
 	def world_coordinates_callback(self, data):
-	    if self.HOLDON:
+		#YOLO/REDTAPE detection received
+
+	    if self.HOLDON: #count the number of detections in the HOLDON period
 		    self.HOLDON_hits += 1
 		    print("hit!")
 
-	    if self.HOLDON_wait <= 0 and self.retreating <= 0 and self.RETREATPIC <=0:
+	    if self.HOLDON_wait <= 0 and self.retreating <= 0 and self.RETREATPIC <=0: #Starts a HOLDON period which causes the robot to stop and wait to see if it gets more detections
 		    self.HOLDON = 2000
 		    self.HOLDON_wait = 2000
 		    print("HOLDON!!!!")
 
-	    if self.RETREATPIC > 0:
+	    if self.RETREATPIC > 0: #if takin hyperspectral picture, save the estimate world coorinates of the YOLO/REDTAPE
 	    	self.wcoord = data.data
 
+	    #N I G H T M A R E
+	    #Make the TARGET coordinates, that the camera faces, hone in on the YOLO/REDTAPE world coordinates, so that the YOLO/REDTAPE stays in the center of the image
 	    x_world, y_world, z_world = data.data
 	    dx = x_world - self.targ_coords[0]
 	    dy = y_world - self.targ_coords[1]
@@ -607,12 +611,12 @@ class POCont:
 
 
 				lin = self.calc_des_vel(fixed_odom, lingain, targ_vel)
-				#How largely the throttle command decreases
+				#How largely the throttle command decreases based on how far the velocity is above the desired
 				if lin < 0:
 					lin /= 50 #decrease or increase if desired to make robot decelerate faster
 					if lin < -0.01: #0.01:
 						lin = -0.01
-				#How largely the throttle command increases
+				#How largely the throttle command increases based on how far the velocity is above the desired
 				if lin > 0:
 					lin /= 1 #decrease or increase if desired to make robot accelerate faster
 					if lin > 0.01: #0.01:

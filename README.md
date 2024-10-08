@@ -10,7 +10,7 @@ How to use TMUX:
 
 >Computer:
 >>run ./tmux_com.sh
->>Nothing runs on its own, but set up the prompt for you. Navigate to the desired tab and press enter to run the already written prompt.
+>>Nothing runs on its own, but it sets up the prompts for you. Navigate to the desired tab and press enter to run the already written prompt.
 
 >Robot:
 >>run ./tmux_robot.sh
