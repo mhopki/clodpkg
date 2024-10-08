@@ -48,91 +48,96 @@ r_atc = {value: key for key, value in axis_codes.items()}
 class POCont:
 	def __init__(self):
 		rospy.init_node('po_controller', anonymous=True) #SET QUEUESIZE TO 1
+
+		#Specific odom topic robot subscribes to
 		self.odom_sub_topic = '/camera/odom/sample'#'/odometry/filtered_map'#'/camera/odom/sample'#'fused_localization'#'/camera/odom/sample'
+
+		#List of odom topics (for switching between VIO, GPS, etc)
 		self.odom_topics = ['/camera/odom/sample','/odometry/filtered_map', '/camera/odom/sample', 'fused_localization']
-		self.joy_pub = rospy.Publisher('/joy', Joy, queue_size=100) #delete queue_size = 1
-		#self.odom_sub = rospy.Subscriber('/vicon/BEAST/odom', Odometry, self.odom_callback, queue_size=1, tcp_nodelay=True)
-		self.odom_sub = rospy.Subscriber(self.odom_sub_topic, Odometry, self.odom_callback_cam, queue_size=1, tcp_nodelay=True)
+
+		#Subscriber for Robot control commands (JOY commands)
+		self.joy_pub = rospy.Publisher('/joy', Joy, queue_size=1) #delete queue_size = 1
+
+		#Subsriber for robot odometry
+		self.odom_sub = rospy.Subscriber(self.odom_sub_topic, Odometry, self.odom_callback, queue_size=1, tcp_nodelay=True)
+
+		#Subscriber for receiving waypoints to navigate to
 		self.waypoint_sub = rospy.Subscriber('/waypoints', PoseStamped, self.waypoint_callback)
-		#pose_sub = rospy.Subscriber('/vicon/BEAST/pose', PoseStamped, pose_callback, queue_size=1, tcp_nodelay=True)
+
+		#Subscriber for the target coordinates that the RGB camera should face
 		self.target_sub = rospy.Subscriber('/object_world_coordinates', Float32MultiArray, self.world_coordinates_callback)
-		self.photo_pub = rospy.Publisher('/take_photo', Float32MultiArray, queue_size=10) #change to separate names for hyper and robot
+
+		#Publisher publishes a specific number that the Hyperspectral code receives to know to take a picture
+		self.photo_pub = rospy.Publisher('/take_photo', Float32MultiArray, queue_size=1)
+		#Subscriber listens to a specific number that the lets the robot know the picture has been taken and to continue following its path
 		self.photo_sub = rospy.Subscriber('/take_photo', Float32MultiArray, self.photo_callback)
 
 		self.last_received_time = rospy.Time.now()
 
-		#USE PAN TILT CAMERA:
-		#kalman filter to estimate location of sensor with size prior
-		#or use multiple images to find the depth
 
-		self.current_waypoint = None
-		self.distance_threshold = 0.2
-
+		#Initialize an empty JOY command that will tell the robot to idle
 		self.joy_msg = Joy()
 		self.joy_msg.axes = [0.0] * 8
 		self.joy_msg.buttons = [0] * 12
 		self.last_joy_message = Joy()
-		self.r_odom = Odometry()
-		self.g_odom = Odometry()
-		self.g_met = False
 
-		self.g_loc = [-10, -10]
+
+		self.r_odom = Odometry() #Robot Odometry
+		self.g_odom = Odometry() #Goal Odometry (just created so i can easily compare the two)
+		self.g_met = False #If current goal location is met
+
+		self.g_loc = [-10, -10] #Goal location array[x,y] (-10, -10 is the intialized state so that robot doesnt think it has reached a goal when it turns on)
 		self.g_odom.pose.pose.position.x = self.g_loc[0]
 		self.g_odom.pose.pose.position.y = self.g_loc[1]
-		self.reset_point = 0
+		self.reset_point = 0 #conunter for when the next waypoint is set to the new goal after the old goal is met
 
 		self.waypoints = []
-		self.has_target = False
-		self.targ_coords = [0.0, 0.0, 0.0]
-		self.cam_pose = [0,0]
+		self.has_target = False #if there is a target to track with the RGB camera
+		self.targ_coords = [0.0, 0.0, 0.0] #target coordinates
+		self.cam_pose = [0,0] #RGB cam pose x,y
 
-		self.r_pos = [0.0, 0.0]
-		self.r_theta = -100.0
-		self.prev_theta = -100.0
-		self.r_theta_cam = [90,0]
+		self.r_pos = [0.0, 0.0] #Robot position array
+		self.r_theta = -100.0 #Special theta for orientation (wrong in principle, but it works correctly) it is updated each step but initialized to -100
+		self.prev_theta = -100.0 #Previous Special theta
+		self.r_theta_cam = [90,0] #Angle of the RGB camera (x,y)
 
-		self.des_twist = [0, 0, 0, 0, 0, 0]
-		self.hcommit = 1000
-		self.comside = 0
+		self.hcommit = 1000 #Variable for deiding which turn to take when reorienting. Make sure robot understands +350deg is also -10deg and to take the latter
+		self.comside = 0 #side that robot chooses to turn, either "+350deg" or "-10deg"
 
-		self.des_turn = 0
-		self.des_speed = 0.5
-		self.des_swait = 0
 		self.g_thres = 0.3 #threshold of goal waypoint
 
-		self.odom_switch = 12000#6000
+		self.odom_switch = 12000#6000 #Time to wait before switching Odom topic. Used to start in VIO and the switch to GPS once a couple messages have been received to give the GPS the proper orientation
 
-		self.HOLDON = 0 #pause for the given time 
-		self.HOLDON_wait = 0 #charge up before you can pause again
-		self.HOLDON_hits = 0 #sensor detections during pause
+		self.HOLDON = 0 #pause for the given time to wait and see if there are YOLO detections
+		self.HOLDON_wait = 0 #wait up time before you can pause again for YOLO detections again 
+		self.HOLDON_hits = 0 #YOLO sensor detections during pause
 		self.sensor_locs = [] #loc of sensor confirmed
 		self.sensor_locs_my = [] #my location when i saw confirmed sensor
 		self.retreating = 0 #retreating to find sensor, prevent seeing another "holding on"
+		self.reverse = 0 #Makes ROBOT REVERSE
 		self.RETREATPIC = 0 # pause for hyperspectral photo
-		self.wcoord = []
-		self.wcoord_all = []
+		self.wcoord = [] #world coordinates of current sensor detection
+		self.wcoord_all = [] #world coordinate of all sensor detections
 
-		self.photo_good = False
-
-		#BASE VALUES FOR TRACKING TEST!!!
-		self.devx = None
-		self.devy = None
-		self.devz = None
-		self.persist = 100
+		self.photo_good = False #Did the hyperspectral successfully take a picture
 
 	def world_coordinates_callback(self, data):
-	    if self.HOLDON:
+		#YOLO/REDTAPE detection received
+
+	    if self.HOLDON: #count the number of detections in the HOLDON period
 		    self.HOLDON_hits += 1
 		    print("hit!")
 
-	    if self.HOLDON_wait <= 0 and self.retreating <= 0 and self.RETREATPIC <=0:
+	    if self.HOLDON_wait <= 0 and self.retreating <= 0 and self.RETREATPIC <=0: #Starts a HOLDON period which causes the robot to stop and wait to see if it gets more detections
 		    self.HOLDON = 2000
 		    self.HOLDON_wait = 2000
 		    print("HOLDON!!!!")
 
-	    if self.RETREATPIC > 0:
+	    if self.RETREATPIC > 0: #if takin hyperspectral picture, save the estimate world coorinates of the YOLO/REDTAPE
 	    	self.wcoord = data.data
 
+	    #N I G H T M A R E
+	    #Make the TARGET coordinates, that the camera faces, hone in on the YOLO/REDTAPE world coordinates, so that the YOLO/REDTAPE stays in the center of the image
 	    x_world, y_world, z_world = data.data
 	    dx = x_world - self.targ_coords[0]
 	    dy = y_world - self.targ_coords[1]
@@ -167,37 +172,25 @@ class POCont:
 	    rospy.loginfo(f"Received World Coordinates: X={x_world:.2f} cm, Y={y_world:.2f} cm, Z={z_world:.2f} cm")
 		
 	def odom_callback(self, data):
-
+		#Receive Odometry
 	    self.r_pos = [data.pose.pose.position.x, data.pose.pose.position.y]
 	    if self.r_theta == -100.0:
 	    	self.r_theta = data.pose.pose.orientation.z
 	    	self.prev_theta = self.r_theta
-	    self.r_twist = [data.twist.twist.linear.y, data.twist.twist.angular.z]
-	    self.r_odom = data
-
-	def odom_callback_cam(self, data):
-
-	    self.r_pos = [data.pose.pose.position.x, data.pose.pose.position.y]
-	    if self.r_theta == -100.0:
-	    	self.r_theta = data.pose.pose.orientation.z
-	    	self.prev_theta = self.r_theta
-	    self.r_twist = [data.twist.twist.linear.x, data.twist.twist.angular.z]
 	    self.r_odom = data
 
 	def waypoint_callback(self, data):
-
+		#Receive published waypoint
 	    print("way_coords: ", data.pose.position.x, data.pose.position.y)
 	    self.waypoints.append(data)
 
-	def pose_callback(self, data):
-		#Do nothing
-	    x = 0
-
 	def photo_callback(self, data):
+		#If received message that Hyperspectral has successfully taken a photo
 	    if data.data[0] == 1:
 	        self.photo_good = True
 
 	def cam_orient(self, current_pose, ox, oy, oz, kpx, kpy, kpz):
+		#N I G H T M A R E
 		#XY plane
 	    dx = ox - current_pose.pose.pose.position.x
 	    dy = oy - current_pose.pose.pose.position.y
@@ -325,6 +318,7 @@ class POCont:
 	    return truecx, truecy
 
 	def set_rtheta(self):
+		#Converts orientation Z into a 0 to 2pi scale (incorrect in principle, but works correctly)
 		if abs(self.r_theta) < 99: #robot itself
 			des_t = abs(self.r_odom.pose.pose.orientation.z)
 			if self.r_odom.twist.twist.angular.z > 0.05:
@@ -347,36 +341,6 @@ class POCont:
 					#print("neg side")
 
 
-	def straighten(self, des_or):
-	    #negative is right, pos is left
-	    self.des_swait = 1
-	    if self.des_swait >= 1:
-	    	if self.r_theta - des_or > 0.01:
-	    		if self.des_turn < 0.99:
-	    			self.des_turn += 0.15 * abs(self.r_theta - des_or) #0.03 for 0.4
-	    			self.des_swait = 0
-	    			#print("desr", self.r_theta, des_or)
-	    			if self.des_turn > 0.99:
-	    				self.des_turn = 0.99
-	    	elif self.r_theta - des_or < -0.01:
-	    		if self.des_turn > -0.99:
-		    		self.des_turn -= 0.15  * abs(self.r_theta - des_or)
-		    		self.des_swait = 0
-		    		#print("desl", self.r_theta, des_or)
-		    		if self.des_turn < -0.99:
-	    				self.des_turn = -0.99
-	    	else:
-	    		if self.des_turn > 0.05:
-	    			self.des_turn -= abs(self.des_turn - 0.05) / 20 #10
-	    			#print("correct_left: ", self.des_turn)
-	    		if self.des_turn < 0.05:
-	    			self.des_turn += abs(self.des_turn + 0.05) / 20
-	    			#print("correct_right: ", self.des_turn)
-
-	    else:
-	    	self.des_swait += 0.5
-	    	#print("des_wait")
-
 	def calculate_distance(self, x1, y1, x2, y2):
 		return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
 
@@ -386,9 +350,9 @@ class POCont:
 	    dy = waypoint_pose.pose.pose.position.y - current_pose.pose.pose.position.y
 	    
 	    # Calculate the desired heading angle using arctangent (atan2)
-	    if (self.retreating == 2):
+	    if (self.retreating == 2 || self.reverse): #REVERSE
 	    	desired_heading = -math.atan2(dy, dx)#-math.atan2(dx, dy)
-	    else:
+	    else: #FORWARD
 	    	desired_heading = math.atan2(dy, dx)#-math.atan2(dx, dy)
 	    
 	    return desired_heading
@@ -400,6 +364,7 @@ class POCont:
 	    
 	    # Calculate the difference between current and desired heading
 	    heading_error = desired_heading - (current_pose.pose.pose.orientation.z * math.pi)
+	    #Commit to turning to one side or the other
 	    if (self.hcommit >= 10):#10000
 	    	if heading_error > math.pi:
 	    		heading_error -= 2 * math.pi
@@ -415,13 +380,10 @@ class POCont:
 	    		heading_error -= 2 * math.pi
 	    	elif self.comside == -1:
 	    		heading_error += 2 * math.pi
-	    
-	    # Calculate linear velocity as a proportion of the distance to the waypoint
-	    linear_distance = math.sqrt((waypoint_pose.pose.pose.position.x - current_pose.pose.pose.position.x)**2 + 
-	                                (waypoint_pose.pose.pose.position.y - current_pose.pose.pose.position.y)**2)
 
-	    linear_distance = targ_vel - (abs(current_pose.twist.twist.linear.x) + abs(current_pose.twist.twist.linear.y) + abs(current_pose.twist.twist.linear.z))
-	    linear_velocity = kp_linear * linear_distance
+	    #linear_distance = targ_vel - (abs(current_pose.twist.twist.linear.x) + abs(current_pose.twist.twist.linear.y) + abs(current_pose.twist.twist.linear.z))
+	    velocity_mag = targ_vel - math.sqrt(current_pose.twist.twist.linear.x ** 2 + current_pose.twist.twist.linear.y ** 2 + current_pose.twist.twist.linear.z ** 2)
+	    linear_velocity = kp_linear * velocity_mag
 	    
 	    # Calculate angular velocity as a proportion of the heading error
 	    angular_velocity = kp_angular * heading_error
@@ -432,9 +394,8 @@ class POCont:
 	def calc_des_vel(self, current_pose, kp_linear, vel):
 	    targ_vel = vel
 	    #linear_distance = targ_vel - (abs(current_pose.twist.twist.linear.x) + abs(current_pose.twist.twist.linear.y) + abs(current_pose.twist.twist.linear.z))
-	    #REVERSE
-	    linear_distance = targ_vel - (abs(current_pose.twist.twist.linear.x) + abs(current_pose.twist.twist.linear.y) + abs(current_pose.twist.twist.linear.z))
-	    linear_velocity = kp_linear * linear_distance
+	    velocity_mag = targ_vel - math.sqrt(current_pose.twist.twist.linear.x ** 2 + current_pose.twist.twist.linear.y ** 2 + current_pose.twist.twist.linear.z ** 2)
+	    linear_velocity = kp_linear * velocity_mag
 	    return linear_velocity
 
 	def cam_track(self, fixed_odom, kpx, kpy, kpz):
@@ -555,16 +516,16 @@ class POCont:
 		return new_x, new_y
 
 	def spin(self):
-		rate = rospy.Rate(1000)
-		# Publish the Joy message repeatedly
+		rate = rospy.Rate(1000) #Rate of Joy commands, if you decrease this the robot will have a time delay
+		# intialize variables
 		scan_dir = 0
 		lin_out = 0
-		targ_vel = 0.1#0.1
+		targ_vel = 0.1 #CONSTANT VELOCITY of the robot
 
 		while not rospy.is_shutdown():
 			time_since_last_receive = rospy.Time.now() - self.last_received_time
 
-			if self.HOLDON <= 0 and self.HOLDON_wait > 0:
+			if self.HOLDON <= 0 and self.HOLDON_wait > 0:#Runs out the wait period needed before stopping again when a sensor is detected
 				self.HOLDON_wait -= 1
 
 			#set robot orientation
@@ -573,8 +534,8 @@ class POCont:
 			fixed_odom.pose.pose.orientation.z = self.r_theta #r_theta is robot orientation
 
 			#motion gains
-			lingain = 1.0 * 0.0002#0.00065#0.00065#0.00055#4#4#0.01#3.0 * 6#3.0#1.5
-			anggain = 1.0 * 2.0#8.0 * 20#20#8.0#5.0#3.0
+			lingain = 1.0 * 0.0002 #VELOCITY GAIN (may need to play with this if robot does not accelerate fast enough)
+			anggain = 1.0 * 2.0 #ANGULAR VELOCITY GAIN, (you shouldnt have to touch this one)
 			
 			#cam heading gains
 			kpx = 1.0
@@ -603,23 +564,24 @@ class POCont:
 				x = 0
 			elif (self.HOLDON <= 0 and self.RETREATPIC <= 0 and ((abs(self.r_pos[0] - self.g_loc[0]) > self.g_thres or abs(self.r_pos[1] - self.g_loc[1]) > self.g_thres) and self.g_met == False and self.g_loc[0] != -10)):
 				#WE ON GO
-				#Robot is travelling
+				#Robot is travelling to waypoint
 				if self.odom_switch > 0:
 					if self.odom_sub_topic == self.odom_topics[0]:
 						self.odom_switch -= 1
 						#print("still odom")
-						if self.odom_switch <= 0:
+						if self.odom_switch <= 0: #switches from one odom topic to the next in the list
 							xxxx= 0
 							#print("switch to fused")
 							#self.odom_sub_topic = self.odom_topics[1]
 							#self.odom_sub.unregister()
-							#self.odom_sub = rospy.Subscriber(self.odom_sub_topic, Odometry, self.odom_callback_cam, queue_size=1, tcp_nodelay=True)
+							#self.odom_sub = rospy.Subscriber(self.odom_sub_topic, Odometry, self.odom_callback, queue_size=1, tcp_nodelay=True)
 
 				dist = self.calculate_distance(self.r_pos[0], self.r_pos[1], self.g_loc[0], self.g_loc[1])
 
 				lin, ang = self.calculate_desired_cmd(fixed_odom, self.g_odom, lingain, anggain, targ_vel)
 				scan_dir = 0
 				if (self.has_target or True):
+					#SET CAMERA TO FIXED HOMOGRAPHY ORIENTATION
 					camx = 2.507#2.25
 					camy = 3.0#2.0#2.1
 					if self.retreating > 0:
@@ -637,36 +599,40 @@ class POCont:
 					elif scan_dir < -math.pi:
 						scan_dir += 2 * math.pi
 
+				#send camera orientation joy commands
 				self.joy_msg.axes[r_atc["ABS_HAT0X"]] = camx
 				self.joy_msg.axes[r_atc["ABS_HAT0Y"]] = camy
 
-				#fit desired turn radius
+				#fit desired turn radius so servos dont turn to far and shatter
 				if ang > 0.4:
 					ang = 0.4
 				if ang < -0.4:
 					ang = -0.4
 
-				#soften turn radius if close to goal
-				if dist < self.g_thres * 1.2:
-					#ang = ang / 10
-					print(dist)
 
 				lin = self.calc_des_vel(fixed_odom, lingain, targ_vel)
+				#How largely the throttle command decreases based on how far the velocity is above the desired
 				if lin < 0:
-					lin /= 50
+					lin /= 50 #decrease or increase if desired to make robot decelerate faster
 					if lin < -0.01: #0.01:
 						lin = -0.01
+				#How largely the throttle command increases based on how far the velocity is above the desired
 				if lin > 0:
+					lin /= 1 #decrease or increase if desired to make robot accelerate faster
 					if lin > 0.01: #0.01:
 						lin = 0.01
 				lin_out = lin_out + lin # + 0.2
 
+				#Throttle command bottom limit
+				#MAY NEED TO INCREASE WHEN OUTSIDE
 				if lin_out < 0.1: #15#0.85
 					lin_out = 0.1 #15#0.85
 
+				#Throttle command upper limit
 				if lin_out > 1.0:
 					lin_out = 1.0
 
+				#Turning angle command
 				ang_out_f = -((ang / 2) + 0.025)*4
 				if ang_out_f > 1.0:
 					ang_out_f = 1.0
@@ -679,41 +645,34 @@ class POCont:
 					ang_out_r = -1.0
 
 				self.last_received_time = rospy.Time.now()
-				if (self.retreating == 2):
+				if (self.retreating == 2 || self.reverse): #REVERSE DRIVING
 					self.joy_msg.axes[r_atc["ABS_Z"]] = lin_out
 					self.joy_msg.axes[r_atc["ABS_RZ"]] = 0
-				else:
+				else: #FORWARD DRIVING
 					self.joy_msg.axes[r_atc["ABS_Z"]] = 0
 					self.joy_msg.axes[r_atc["ABS_RZ"]] = lin_out
 				self.joy_msg.axes[r_atc["ABS_X"]] = ang_out_f
 				self.joy_msg.axes[r_atc["ABS_RX"]] = -ang_out_r
 			elif (((abs(self.r_pos[0] - self.g_loc[0]) <= self.g_thres and abs(self.r_pos[1] - self.g_loc[1]) <= self.g_thres) or self.g_met == True) and self.g_loc[0] != -10):
-				#WE MADE IT NIGGA!!!
+				#Made it to the goal
 				self.g_met == True
 
 				#print("SUCCESS")
 				self.reset_point += 1
-				self.reset_point = 2000
+				self.reset_point = 2000 #Instantly go to next waypoint
 
 				#If waited at reset point for 1000 steps
-				if self.reset_point >= 1000:
+				if self.reset_point >= 1000: 
 					#if completed all way points
 					if len(self.waypoints) < 1:
 						print("complete")
+						#Send stop joy command and reset goal location to nothing
 						self.last_received_time = rospy.Time.now()
 						self.joy_msg.axes[r_atc["ABS_RZ"]] = 0
 						self.joy_msg.axes[r_atc["ABS_Z"]] = 0
 						self.joy_pub.publish(self.joy_msg)
 						self.g_loc = [-10, -10]
 						continue
-						nx = random.uniform(-1.0, 1.0)
-						ny = random.uniform(3.0, 6.0)
-						self.g_loc = [nx, ny]
-						self.g_odom.pose.pose.position.x = self.g_loc[0]
-						self.g_odom.pose.pose.position.y = self.g_loc[1]
-						self.reset_point = 0
-						self.g_met = False
-						print(self.g_loc)
 					else:
 						#begin next waypoint
 						self.g_loc = [self.waypoints[0].pose.position.x, self.waypoints[0].pose.position.y]
@@ -724,84 +683,38 @@ class POCont:
 						self.waypoints.pop(0)
 						print(self.g_loc)
 
-						self.retreating -=1
-						if self.retreating == 0:
-							self.HOLDON_wait = 2000
-							photo_msg = Float32MultiArray(data=[0])
-							self.photo_pub.publish(photo_msg)
-							self.RETREATPIC = 1000#4000
-							self.photo_good = False
-							print("WE FLICKING UP FR!!!!!!!!")
 			elif self.HOLDON:
 				print("HOLDON")
-				senx = fixed_odom.pose.pose.position.x
-				seny = fixed_odom.pose.pose.position.y
-				senz = fixed_odom.pose.pose.position.z
+				#SENX IS THE SAME AS SEN LOCS MY
 				camx, camy, senx, seny, senz = self.cam_track(fixed_odom, kpx, kpy, kpz)
+
+				#set camera to fixed homography position
 				camx = 2.507#2.5
 				camy = 3.0
 				if self.HOLDON <= 1000:
+					#set camera to fixed homography position
 					camx = 2.507#2.5
 					camy = 3.0#2.0
 
 
 				self.HOLDON -= 1
 				if self.HOLDON == 0:
-					self.HOLDON_wait = 1000#5000
-					if self.HOLDON_hits >= 5:
+					self.HOLDON_wait = 1000#5000 #how long to wait for 5 detections
+					if self.HOLDON_hits >= 5: #5 YOLO detections found during wait period means there is a sensor so take a pic
 						print("FOUND A SENSOR!!")
 						print("FOUND A SENSOR!!")
 						print("FOUND A SENSOR!!")
 						print("FOUND A SENSOR!!")
-						#"""
-						self.sensor_locs.append([senx, seny, senz])
-						print("SENSOR LOC: ", self.sensor_locs)
+
+						#self.sensor_locs.append([senx, seny, senz]) #OBSOLETE needs to be fixed
+						#print("SENSOR LOC: ", self.sensor_locs) #OBSOLETE needs to be fixed
 						self.sensor_locs_my.append([fixed_odom.pose.pose.position.x, fixed_odom.pose.pose.position.y, fixed_odom.pose.pose.position.z])
 						print("MY LOC: ", self.sensor_locs_my)
 						
-						dist = self.calculate_distance(self.sensor_locs[-1][0], self.sensor_locs[-1][1], self.sensor_locs_my[-1][0], self.sensor_locs_my[-1][1])
+						#dist = self.calculate_distance(self.sensor_locs[-1][0], self.sensor_locs[-1][1], self.sensor_locs_my[-1][0], self.sensor_locs_my[-1][1])
 
-						if (False): #dist > 1.2 or dist < 0.7):
-							ang = self.angle(self.sensor_locs[-1][0], self.sensor_locs[-1][1], self.sensor_locs_my[-1][0], self.sensor_locs_my[-1][1])
-							#ang = self.angle(self.sensor_locs_my[-1][0], self.sensor_locs_my[-1][1], self.sensor_locs[-1][0], self.sensor_locs[-1][1])
-							#ang = self.r_odom.pose.pose.orientation.z + 3.14
-							print("ANGLE: ", ang)
-							rrx, rry = self.calculate_point(self.sensor_locs_my[-1][0], self.sensor_locs_my[-1][1], 1.5, ang)
-							rrx2, rry2 = self.calculate_point(self.sensor_locs_my[-1][0], self.sensor_locs_my[-1][1], 1.0, ang)
-							#retloc = [rrx, rry]
-							retloc = PoseStamped()
-							retloc.pose.position.x = rrx
-							retloc.pose.position.y = rry
-							retloc2 = PoseStamped()
-							retloc2.pose.position.x = rrx2
-							retloc2.pose.position.y = rry2
-							myloc = PoseStamped()
-							myloc.pose.position.x = self.sensor_locs_my[-1][0]
-							myloc.pose.position.y = self.sensor_locs_my[-1][1]
-							currgo = PoseStamped()
-							currgo.pose.position.x = self.g_loc[0]
-							currgo.pose.position.y = self.g_loc[1]
-							#retloc2 = [rrx2, rry2]
-							#test = []
-							#test.append(retloc)
-							#test.append(retloc2)
-							#test.append([self.sensor_locs_my[-1][0], self.sensor_locs_my[-1][1]])
-							#test.append(self.waypoints)
-							#self.waypoints = test
-							self.waypoints.insert(0,currgo)
-							#self.waypoints.insert(0,myloc)
-							self.waypoints.insert(0,retloc2)
-							self.waypoints.insert(0,retloc)
-							self.g_loc[0] = rrx2
-							self.g_loc[1] = rry2
-							print("GOAL: ", self.g_loc)
-							print("MY: ", self.sensor_locs_my[-1])
-							print("RETM: ", (rrx2,rry2))
-							print("WYPS: ", self.waypoints)
-							print("RETREAT TO VIEW IT AGAIN")
-							self.retreating = 2#3"""
-						else:
-							#self.RETREATPIC = 4000
+						if (True):
+							#Start taking Hyperspectral pic and send photo message to the Hyperspectral
 							photo_msg = Float32MultiArray(data=[0])
 							self.photo_pub.publish(photo_msg)
 							self.RETREATPIC = 1000#4000
@@ -811,26 +724,25 @@ class POCont:
 					self.HOLDON_hits = 0
 
 				self.last_received_time = rospy.Time.now()
-				#self.joy_msg = Joy()
-				#self.joy_msg.axes = [0.0] * 8
-				#self.joy_msg.buttons = [0] * 12
+
+				#STOP ROBOT and control cam orientation
 				self.joy_msg.axes[r_atc["ABS_HAT0X"]] = camx
 				self.joy_msg.axes[r_atc["ABS_HAT0Y"]] = camy
 				if self.joy_msg.axes[r_atc["ABS_RZ"]] > 0:
 					self.joy_msg.axes[r_atc["ABS_RZ"]] = 0
 				if self.joy_msg.axes[r_atc["ABS_RZ"]] <= 0.01:
-					self.joy_msg.axes[r_atc["ABS_RZ"]] = 0#if bag_testing
+					self.joy_msg.axes[r_atc["ABS_RZ"]] = 0
 				if self.joy_msg.axes[r_atc["ABS_Z"]] > 0:
 					self.joy_msg.axes[r_atc["ABS_Z"]] = 0
 				if self.joy_msg.axes[r_atc["ABS_Z"]] <= 0.01:
 					self.joy_msg.axes[r_atc["ABS_Z"]] = 0
+
 				#self.joy_msg.axes[r_atc["ABS_X"]] = 0.1#ang_out_f
 				#self.joy_msg.axes[r_atc["ABS_RX"]] = 0#-ang_out_r
 			elif self.RETREATPIC:
+				#Taking hyperspectral photo, and waiting for message that picture was successful
 
-				#print("WE FLICKING UP FR!!!!!!!!")
-
-				if self.photo_good == True:
+				if self.photo_good == True: #if successful picture, leave this loop
 					self.RETREATPIC -= 1
 
 				if self.RETREATPIC == 0:
@@ -846,10 +758,12 @@ class POCont:
 				#self.joy_msg.buttons = [0] * 12
 				#self.joy_msg.axes[r_atc["ABS_HAT0X"]] = camx
 				#self.joy_msg.axes[r_atc["ABS_HAT0Y"]] = camy
+
+				#SLOW DOWN ROBOT WHETHER ITS GOING BACKWARD OR FORWARD
 				if self.joy_msg.axes[r_atc["ABS_RZ"]] > 0:
 					self.joy_msg.axes[r_atc["ABS_RZ"]] -= 0.01
 				if self.joy_msg.axes[r_atc["ABS_RZ"]] <= 0.01:
-					self.joy_msg.axes[r_atc["ABS_RZ"]] = 0#if bag_testing
+					self.joy_msg.axes[r_atc["ABS_RZ"]] = 0
 				if self.joy_msg.axes[r_atc["ABS_Z"]] > 0:
 					self.joy_msg.axes[r_atc["ABS_Z"]] -= 0.01
 				if self.joy_msg.axes[r_atc["ABS_Z"]] <= 0.01:
@@ -860,6 +774,7 @@ class POCont:
 			else:
 				x = 0
 				#No waypoint commands, Idle state
+
 				#print("waiting")
 				#print("sensors_found: ", self.sensor_locs)
 				#print("my_location_then: ", self.sensor_locs_my)
@@ -869,6 +784,8 @@ class POCont:
 
 					#camx = 2.5
 					#camy = 3.0#2.0
+
+					#Set camera to fixed orientation (Homography was done in this fixed orientation)
 					camx = 2.507
 					camy = 3.0
 				
@@ -884,23 +801,10 @@ class POCont:
 					#print("dummy_dir: ", dumx, dumy, scan_dir)
 				#camx, camy = self.cam_orient(fixed_odom, 0, 1, kpx, kpy)
 				#print("cur_pos: ", self.r_theta)
-				if len(self.waypoints) > 0:
+
+				if len(self.waypoints) > 0: #CHECK IF WAYPOINTS EXIST TO START FOLLOWING
 					self.g_loc[0] = self.r_pos[0]
 					self.g_loc[1] = self.r_pos[1]
-				#print("WTF", self.r_pos, self.g_loc)
-
-				bag_testing = False
-				if (bag_testing):
-					#print("s: ", lin_out)
-					lin = self.calc_des_vel(fixed_odom, lingain, targ_vel)
-					if lin < 0:
-						lin /= 50
-					lin_out = lin_out + lin # + 0.2
-					if lin_out < 0.2:
-						lin_out = 0.2
-					if lin_out > 0.8:
-						lin_out = 0.8
-					#print("u: ", lin_out, lin)
 
 
 				self.last_received_time = rospy.Time.now()

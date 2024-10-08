@@ -21,7 +21,7 @@ yolo_x = 100
 yolo_y = 100
 
 def capture(data):
-    if data.data[0] != 0:
+    if data.data[0] != 0: #Make sure this callback is exited if any number other than 0 is received, 0 means take picture
         print("NOT PHOTO")
         return None
 
@@ -29,11 +29,11 @@ def capture(data):
     x = int(2448/2)
     y = int(2048/2)
     exposure = 100
-    if yolo_x: 
+    if yolo_x: #set the x to the center coordinate x
         x = yolo_x #int(args_x)
         print("yolo_x: ", x)
-    if yolo_y: 
-        y =  yolo_y #int(args_y) # 2048 - int(args.y) #TODO: this might need to be changed 
+    if yolo_y:  #set the y to the center coordinate y
+        y =  yolo_y #int(args_y)
         print("yolo_y: ", y)
     exposure = 100#int(args_exposure) 
 
@@ -180,7 +180,7 @@ def yolo_callback(data):
     #yolo_x = data.detections[0].bbox.center.x - (data.detections[0].bbox.size_x)/2
     #yolo_y = data.detections[0].bbox.center.y - (data.detections[0].bbox.size_y)/2
 
-def center_callback(data):
+def center_callback(data): #gives the center coordinates of the YOLO detection
     global yolo_x, yolo_y
     yolo_x = data.data[0]
     yolo_y = data.data[1]
