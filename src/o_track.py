@@ -350,7 +350,7 @@ class POCont:
 	    dy = waypoint_pose.pose.pose.position.y - current_pose.pose.pose.position.y
 	    
 	    # Calculate the desired heading angle using arctangent (atan2)
-	    if (self.retreating == 2 || self.reverse): #REVERSE
+	    if (self.retreating == 2 or self.reverse): #REVERSE
 	    	desired_heading = -math.atan2(dy, dx)#-math.atan2(dx, dy)
 	    else: #FORWARD
 	    	desired_heading = math.atan2(dy, dx)#-math.atan2(dx, dy)
@@ -645,7 +645,7 @@ class POCont:
 					ang_out_r = -1.0
 
 				self.last_received_time = rospy.Time.now()
-				if (self.retreating == 2 || self.reverse): #REVERSE DRIVING
+				if (self.retreating == 2 or self.reverse): #REVERSE DRIVING
 					self.joy_msg.axes[r_atc["ABS_Z"]] = lin_out
 					self.joy_msg.axes[r_atc["ABS_RZ"]] = 0
 				else: #FORWARD DRIVING
