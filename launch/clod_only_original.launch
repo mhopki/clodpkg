@@ -1,7 +1,0 @@
-<launch>
-    <param name="use_sim_time" value="False" />
-    <!-- <node name="RVIZ" pkg="rviz" type="rviz" args=" -d $(find clod_pkg)/param/clod_setup.rviz" /> -->
-
-    <node pkg="clod_pkg" type="joy_cmd_vel_mapping.py" name="node_main" output="screen"/>
-
-</launch>
