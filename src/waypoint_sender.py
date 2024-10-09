@@ -11,6 +11,11 @@ def main():
     try:
         x = float(input("Enter the x coordinate for the waypoint: "))
         y = float(input("Enter the y coordinate for the waypoint: "))
+        z = float(input("Enter a positive number for REVERSE: "))
+        if z > 0:
+        	z = 1.0
+        else:
+        	z = 0.0
     except ValueError:
         rospy.logerr("Invalid input! Please enter numeric values for x and y.")
         return
@@ -19,6 +24,7 @@ def main():
     way_out = PoseStamped()
     way_out.pose.position.x = x
     way_out.pose.position.y = y
+    way_out.pose.position.z = z
 
     # Publish the waypoint
     rospy.loginfo(f"Publishing waypoint: x={x}, y={y}")
