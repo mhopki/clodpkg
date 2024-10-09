@@ -54,6 +54,7 @@ r_btc = {value: key for key, value in button_codes.items()}
 r_atc = {value: key for key, value in axis_codes.items()}
 
 def initialize_servos():
+    print('Initializing servos')
     #Wheel pin voltage control
     kit.servo[0].set_pulse_width_range(0, 5000) # 19000) # front/rear motors
     kit.servo[2].set_pulse_width_range(0, 5000) # 19000) # front/rear motors
@@ -80,7 +81,8 @@ def define_wheel_drive_status(four_wheel_drive):
         motor_pin_a.value = True 
         motor_pin_b.value = False 
 
-def set_servo_position_neutral():        
+def set_servo_position_neutral(): 
+    print('Setting servos to neutral')
     kit.servo[1].angle = 90
     kit.servo[3].angle = 90 
     time.sleep(1)
