@@ -129,7 +129,7 @@ class POCont:
 		    print("hit!")
 
 	    if self.HOLDON_wait <= 0 and self.retreating <= 0 and self.RETREATPIC <=0: #Starts a HOLDON period which causes the robot to stop and wait to see if it gets more detections
-		    self.HOLDON = 2000
+		    self.HOLDON = 5000#2000
 		    self.HOLDON_wait = 2000
 		    print("HOLDON!!!!")
 
@@ -181,8 +181,9 @@ class POCont:
 
 	def waypoint_callback(self, data):
 		#Receive published waypoint
-	    print("way_coords: ", data.pose.position.x, data.pose.position.y)
+	    print("way_coords: ", data.pose.position.x, data.pose.position.y, "REVERSE:", data.pose.position.z)
 	    self.waypoints.append(data)
+	    self.reverse = data.pose.position.z
 
 	def photo_callback(self, data):
 		#If received message that Hyperspectral has successfully taken a photo
@@ -350,8 +351,8 @@ class POCont:
 	    dy = waypoint_pose.pose.pose.position.y - current_pose.pose.pose.position.y
 	    
 	    # Calculate the desired heading angle using arctangent (atan2)
-	    if (self.retreating == 2 || self.reverse): #REVERSE
-	    	desired_heading = -math.atan2(dy, dx)#-math.atan2(dx, dy)
+	    if (self.retreating == 2 or self.reverse): #REVERSE
+	    	desired_heading = math.atan2(dy, dx)#-math.atan2(dx, dy)
 	    else: #FORWARD
 	    	desired_heading = math.atan2(dy, dx)#-math.atan2(dx, dy)
 	    
@@ -399,7 +400,7 @@ class POCont:
 	    return linear_velocity
 
 	def cam_track(self, fixed_odom, kpx, kpy, kpz):
-		if True:
+		if False:
 			if True:
 				#No waypoint commands, Idle state
 				#print("waiting")
@@ -504,6 +505,7 @@ class POCont:
 					self.cam_pose = [camx, camy]
 
 					return camx, camy, dumx, dumy, dumz
+		return 0, 0, 0, 0, 0
 
 	def angle(self, x1, y1, x2, y2):
 		return math.atan2(y2 - y1, x2 - x1) 
@@ -520,7 +522,7 @@ class POCont:
 		# intialize variables
 		scan_dir = 0
 		lin_out = 0
-		targ_vel = 0.1 #CONSTANT VELOCITY of the robot
+		targ_vel = 0.2 #CONSTANT VELOCITY of the robot
 
 		while not rospy.is_shutdown():
 			time_since_last_receive = rospy.Time.now() - self.last_received_time
@@ -535,7 +537,7 @@ class POCont:
 
 			#motion gains
 			lingain = 1.0 * 0.0002 #VELOCITY GAIN (may need to play with this if robot does not accelerate fast enough)
-			anggain = 1.0 * 2.0 #ANGULAR VELOCITY GAIN, (you shouldnt have to touch this one)
+			anggain = 1.0 * 2.0#2.0 #ANGULAR VELOCITY GAIN, (you shouldnt have to touch this one)
 			
 			#cam heading gains
 			kpx = 1.0
@@ -645,7 +647,7 @@ class POCont:
 					ang_out_r = -1.0
 
 				self.last_received_time = rospy.Time.now()
-				if (self.retreating == 2 || self.reverse): #REVERSE DRIVING
+				if (self.retreating == 2 or self.reverse): #REVERSE DRIVING
 					self.joy_msg.axes[r_atc["ABS_Z"]] = lin_out
 					self.joy_msg.axes[r_atc["ABS_RZ"]] = 0
 				else: #FORWARD DRIVING
@@ -739,13 +741,13 @@ class POCont:
 			elif self.RETREATPIC:
 				#Taking hyperspectral photo, and waiting for message that picture was successful
 
-				if self.photo_good == True: #if successful picture, leave this loop
+				if self.photo_good == True or True: #if successful picture, leave this loop
 					self.RETREATPIC -= 1
 
 				if self.RETREATPIC == 0:
 					print("COORDINATES: ", self.wcoord)
 					self.wcoord_all.append(self.wcoord)
-					self.HOLDON_wait = 2000
+					self.HOLDON_wait = 8000#2000
 					self.photo_good = False
 					#x = self.wcoor[25]
 
