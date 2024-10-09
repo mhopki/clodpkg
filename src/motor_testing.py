@@ -87,9 +87,31 @@ def set_servo_position_neutral():
     kit.servo[3].angle = 90 
     time.sleep(1)
 
+def translational_motion(forward):
+    if forward:
+        kit.servo[0].angle = 180
+        kit.servo[2].angle = 0
+        time.sleep(3)
+    else:
+        kit.servo[0].angle = 0
+        kit.servo[2].angle = 180
+        time.sleep(3)
+
+def stop_vehicle():
+    kit.servo[0].angle = 0
+    kit.servo[2].angle = 0
+    time.sleep(3)
+
+
+
+
 initialize_servos()
 define_wheel_drive_status(True)
 set_servo_position_neutral()
+translational_motion(True)
+stop_vehicle()
+translational_motion(False)
+
 
 # kit.servo[0].angle = 180
 # kit.servo[2].angle = 0
