@@ -53,48 +53,57 @@ axis_codes = {
 r_btc = {value: key for key, value in button_codes.items()}
 r_atc = {value: key for key, value in axis_codes.items()}
 
+def initialize_servos():
+    #Wheel pin voltage control
+    kit.servo[0].set_pulse_width_range(0, 5000) # 19000) # front/rear motors
+    kit.servo[2].set_pulse_width_range(0, 5000) # 19000) # front/rear motors
 
-#Wheel pin voltage control
-kit.servo[0].set_pulse_width_range(0, 5000) # 19000) # front/rear motors
-kit.servo[2].set_pulse_width_range(0, 5000) # 19000) # front/rear motors
+    #Servo pin voltage pwm control
+    kit.servo[1].set_pulse_width_range(1000,2000)
+    kit.servo[3].set_pulse_width_range(1000,2000)
 
-#Servo pin voltage pwm control
-kit.servo[1].set_pulse_width_range(1000,2000)
-kit.servo[3].set_pulse_width_range(1000,2000)
+    kit.servo[1].actuation_range = 180
+    kit.servo[3].actuation_range = 180
 
-kit.servo[1].actuation_range = 180
-kit.servo[3].actuation_range = 180
+    #turning cam
+    #kit.servo[4].set_pulse_width_range(500,2500)
+    #kit.servo[5].set_pulse_width_range(500,2500)
 
-#turning cam
-#kit.servo[4].set_pulse_width_range(500,2500)
-#kit.servo[5].set_pulse_width_range(500,2500)
+    #kit.servo[4].actuation_range = 180
+    #kit.servo[5].actuation_range = 180
 
-#kit.servo[4].actuation_range = 180
-#kit.servo[5].actuation_range = 180
+def define_wheel_drive_status(four_wheel_drive):
+    if four_wheel_drive:
+        motor_pin_a.value = True  
+        motor_pin_b.value = True   
+    else:
+        motor_pin_a.value = True 
+        motor_pin_b.value = False 
 
+def set_servo_position_neutral():        
+    kit.servo[1].angle = 90
+    kit.servo[3].angle = 90 
+    time.sleep(1)
 
-print('Basic servo motion')
-motor_pin_a.value = True  
-motor_pin_b.value = True   
+initialize_servos()
+define_wheel_drive_status(True)
+set_servo_position_neutral()
 
-kit.servo[1].angle = 90 - 75
-
-time.sleep(1)
-kit.servo[0].angle = 180
-kit.servo[2].angle = 0
-time.sleep(3)
-kit.servo[0].angle = 0 
-kit.servo[2].angle = 0 
-time.sleep(3)
-kit.servo[0].angle = 0 
-kit.servo[2].angle = 180
-time.sleep(3)
+# kit.servo[0].angle = 180
+# kit.servo[2].angle = 0
+# time.sleep(3)
+# kit.servo[0].angle = 0 
+# kit.servo[2].angle = 0 
+# time.sleep(3)
+# kit.servo[0].angle = 0 
+# kit.servo[2].angle = 180
+# time.sleep(3)
 
 # turn off servos
-kit.servo[2].angle = 0
-time.sleep(1)
+# kit.servo[2].angle = 0
+# time.sleep(1)
 # 90 seems to be neutral?
-kit.servo[1].angle = 90
-time.sleep(1)
-print('Set servo angles')
+# kit.servo[1].angle = 90
+# time.sleep(1)
+# print('Set servo angles')
 
