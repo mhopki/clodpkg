@@ -60,8 +60,8 @@ def initialize_servos():
     kit.servo[2].set_pulse_width_range(0, 5000) # 19000) # front/rear motors
 
     #Servo pin voltage pwm control
-    kit.servo[1].set_pulse_width_range(1000,2000)
-    kit.servo[3].set_pulse_width_range(1000,2000)
+    kit.servo[1].set_pulse_width_range(830, 1830) # front steering
+    kit.servo[3].set_pulse_width_range(650,1750) # rear steering
 
     kit.servo[1].actuation_range = 180
     kit.servo[3].actuation_range = 180
@@ -83,19 +83,20 @@ def define_wheel_drive_status(four_wheel_drive):
 
 def set_servo_position_neutral(): 
     print('Setting servos to neutral')
+    # 1 is for backwheel steering, 3 if for front wheel steering 
     kit.servo[1].angle = 90
     kit.servo[3].angle = 90 
     time.sleep(1)
 
-def translational_motion(forward):
+def translational_motion(duration, forward):
     if forward:
         kit.servo[0].angle = 180
         kit.servo[2].angle = 0
-        time.sleep(3)
+        time.sleep(duration)
     else:
         kit.servo[0].angle = 0
         kit.servo[2].angle = 180
-        time.sleep(3)
+        time.sleep(duration)
 
 def stop_vehicle():
     kit.servo[0].angle = 0
@@ -104,14 +105,15 @@ def stop_vehicle():
 
 
 
-
+duration = 5
 initialize_servos()
 define_wheel_drive_status(True)
 set_servo_position_neutral()
-translational_motion(True)
+translational_motion(duration, True)
 stop_vehicle()
-translational_motion(False)
-
+translational_motion(duration, False)
+initialize_servos()
+stop_vehicle()
 
 # kit.servo[0].angle = 180
 # kit.servo[2].angle = 0

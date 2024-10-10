@@ -15,13 +15,13 @@ import digitalio
 
 # Set channels to the number of servo channels on your kit.
 # 8 for FeatherWing, 16 for Shield/HAT/Bonnet.
-# kit = ServoKit(channels=16)
+kit = ServoKit(channels=16)
 
 # Pin Definitions
-# motor_pin_a = digitalio.DigitalInOut(board.D27)#13  # BOARD pin 12, BCM pin 18
-# motor_pin_a.direction = digitalio.Direction.OUTPUT
-# motor_pin_b = digitalio.DigitalInOut(board.D18)#12  # BOARD pin 16, BCM pin 16
-# motor_pin_b.direction = digitalio.Direction.OUTPUT
+motor_pin_a = digitalio.DigitalInOut(board.D27)#13  # BOARD pin 12, BCM pin 18
+motor_pin_a.direction = digitalio.Direction.OUTPUT
+motor_pin_b = digitalio.DigitalInOut(board.D18)#12  # BOARD pin 16, BCM pin 16
+motor_pin_b.direction = digitalio.Direction.OUTPUT
 
 
 # there are 12 indices in the /joy/button, but only 10 here, and only '0' is used.
@@ -59,8 +59,8 @@ r_atc = {value: key for key, value in axis_codes.items()}
 
 
 # Sets 4 wheel drive when both are True, otherwise 2 wheel drive
-# motor_pin_a.value = True 
-# motor_pin_b.value = True 
+motor_pin_a.value = True 
+motor_pin_b.value = True 
 
 class TwistToMotors:
     def __init__(self):
@@ -80,17 +80,17 @@ class TwistToMotors:
         rospy.loginfo('Initializing servos.')
         
         # Motor min and maximum throttle.
-        # This max is fast if set at angle=180 = full throttle
-        kit.servo[0].set_pulse_width_range(0,19000) # front/rear motors
-        kit.servo[2].set_pulse_width_range(0,19000) # front/rear motors
+        # This max=19000 is fast if set at angle=180 = full throttle, 5000 is reasonable
+        kit.servo[0].set_pulse_width_range(0,5000) # front/rear motors
+        kit.servo[2].set_pulse_width_range(0,5000) # front/rear motors
 
         #Servo pin voltage pwm control
         kit.servo[1].set_pulse_width_range(1000,2000)
         kit.servo[3].set_pulse_width_range(1000,2000)
 
         # TODO: check this limit for safety and physical constraints.
-        kit.servo[1].actuation_range = 30 # 180
-        kit.servo[3].actuation_range = 30 # 180
+        kit.servo[1].actuation_range = 180
+        kit.servo[3].actuation_range = 180
 
 
     def joy_callback(self, data):
@@ -106,17 +106,17 @@ class TwistToMotors:
         rospy.loginfo(f'Reversing with {throttle_input * 100} % Throttle')
          
         # The max value of the servos are 180, and button_held_down ranges from [0,1]
-        # kit.servo[2].angle = 180 * throttle_input
-        # kit.servo[0].angle = 0 
-        # angles = (kit.servo[0].angle, kit.servo[2].angle)
+        kit.servo[2].angle = 180 * throttle_input
+        kit.servo[0].angle = 0 
+        angles = (kit.servo[0].angle, kit.servo[2].angle)
         angles = (180 * throttle_input, 0)
         
         # Unsure whether this is the best way, but emperically seems relatively smooth
         # Ideally, we don't require a period of sleep, but it seems the motors will not move
         # Without it?
-        sleep_duration = max(0.05, throttle_input)
+        sleep_duration = 0.1 # max(0.5, throttle_input)
         time.sleep(sleep_duration)
-        # kit.servo[2].angle = 0
+        #kit.servo[2].angle = 0
 
         return angles
 
@@ -126,16 +126,16 @@ class TwistToMotors:
 
         # The max value of the servos are 180, and button_held_down ranges from [0,1]
         scaled_throttle = 180 * throttle_input
-        # kit.servo[0].angle = scaled_throttle
-        # kit.servo[2].angle = 0
-        # angles = (kit.servo[0].angle, kit.servo[2].angle)
+        kit.servo[0].angle = scaled_throttle
+        kit.servo[2].angle = 0
+        angles = (kit.servo[0].angle, kit.servo[2].angle)
         angles = (scaled_throttle, 0) 
         
         # Unsure whether this is the best way, but emperically seems relatively smooth
         # Ideally, we don't require a period of sleep, but it seems the motors will not move
         # Without it?
        
-        sleep_duration = max(0.05, throttle_input)
+        sleep_duration = 0.1 #  max(0.5, throttle_input)
         time.sleep(sleep_duration)
         
         # Also, resetting the pulse width seems to make the most sense
@@ -170,7 +170,7 @@ class TwistToMotors:
                 
 
     def cmd_move(self):
-        print(self.last_joy_message)
+        # print(self.last_joy_message)
         
         # Can understand why this joystick mapping is not ideal, as it allows for 
         # Forward and backward keys to be pressed at the same time
@@ -186,8 +186,8 @@ class TwistToMotors:
                 
         # For steering
         # TODO check if its minus for left turns.
-        servo_angles = self.cmd_servos_turn(self.last_joy_message.axes[r_atc['ABS_X']])
-        
+        # servo_angles = self.cmd_servos_turn(self.last_joy_message.axes[r_atc['ABS_X']])
+        servo_angles = (90, 90)
         motor_cmd_msg = self.generate_motor_cmd_msg(motor_angles, servo_angles)
         
         return motor_cmd_msg
@@ -210,7 +210,7 @@ class TwistToMotors:
         return (value - source_min) * (target_max - target_min) / (source_max - source_min) + target_min
  
     def run(self):
-        rate = rospy.Rate(100) 
+        rate = rospy.Rate(1000) 
         while not rospy.is_shutdown():
         
             # TODO: Check if this is even necessary. I think it is not, and actually might just get in the way.
@@ -220,8 +220,8 @@ class TwistToMotors:
             if time_difference > 1.0:
                 rospy.loginfo('No Joy message received. Robot has stopped. 90')
                 rospy.loginfo(f'Time since last message: {time_difference}')
-                # kit.servo[0].angle = 0 
-                # kit.servo[2].angle = 0
+                kit.servo[0].angle = 0 
+                kit.servo[2].angle = 0
         
             # Move the robot    
             motor_cmd_msg = self.cmd_move()
