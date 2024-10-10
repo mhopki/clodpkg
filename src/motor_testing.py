@@ -105,7 +105,7 @@ def stop_vehicle():
 
 
 
-duration = 5
+duration = 1
 initialize_servos()
 define_wheel_drive_status(True)
 set_servo_position_neutral()

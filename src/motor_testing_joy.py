@@ -4,7 +4,7 @@
 import rospy
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Float32MultiArray
-
+import numpy as np 
 
 import time
 from adafruit_servokit import ServoKit
@@ -76,13 +76,14 @@ class TwistToMotors:
         self.last_joy_message.axes = [0]*8
         self.last_joy_message.axes = [0]*12
         
+        self.motor_angles = np.array([0, 0])
     def initialize_servos(self):
         rospy.loginfo('Initializing servos.')
         
         # Motor min and maximum throttle.
         # This max=19000 is fast if set at angle=180 = full throttle, 5000 is reasonable
-        kit.servo[0].set_pulse_width_range(0,5000) # front/rear motors
-        kit.servo[2].set_pulse_width_range(0,5000) # front/rear motors
+        kit.servo[0].set_pulse_width_range(0,19000) # front/rear motors
+        kit.servo[2].set_pulse_width_range(0,19000) # front/rear motors
 
         #Servo pin voltage pwm control
         kit.servo[1].set_pulse_width_range(1000,2000)
@@ -125,18 +126,27 @@ class TwistToMotors:
         rospy.loginfo(f'Forward Motion {throttle_input * 100} % Throttle')
 
         # The max value of the servos are 180, and button_held_down ranges from [0,1]
+        
         scaled_throttle = 180 * throttle_input
-        kit.servo[0].angle = scaled_throttle
+        
+        
+        throttle = scaled_throttle / 5 
+        increment = throttle 
         kit.servo[2].angle = 0
+        while throttle < scaled_throttle:
+            kit.servo[0].angle = throttle 
+            # kit.servo[2].angle = 0
+            time.sleep(0.05)
+            throttle += increment 
         angles = (kit.servo[0].angle, kit.servo[2].angle)
-        angles = (scaled_throttle, 0) 
+        angles = np.array([scaled_throttle, 0]) 
         
         # Unsure whether this is the best way, but emperically seems relatively smooth
         # Ideally, we don't require a period of sleep, but it seems the motors will not move
         # Without it?
        
         sleep_duration = 0.1 #  max(0.5, throttle_input)
-        time.sleep(sleep_duration)
+        # time.sleep(sleep_duration)
         
         # Also, resetting the pulse width seems to make the most sense
         # kit.servo[0].angle = 0
@@ -163,14 +173,23 @@ class TwistToMotors:
         # kit.servo[1].angle = scaled_steering_input
         # kit.servo[3].angle = 0
         # angles = (kit.servo[1].angle, kit.servo[3].angle)
-        angles = (scaled_steering_input, 0)
-        time.sleep(1)
+        angles = np.array([scaled_steering_input, 0])
+        # time.sleep(1)
         
         return angles 
                 
+    def cmd_stop(self):
+        # current_angles = self.motor_angles
+        non_zero_servo_i = np.argmax(self.motor_angles)
+        current_angle = self.motor_angles[non_zero_servo_i]
+        increment = current_angle / 5
+        while current_angle > 0:
+            kit.servo[non_zero_servo_i].angle = current_angle 
+            time.sleep(0.05)
+            current_angle -= increment 
 
     def cmd_move(self):
-        # print(self.last_joy_message)
+        print(self.last_joy_message)
         
         # Can understand why this joystick mapping is not ideal, as it allows for 
         # Forward and backward keys to be pressed at the same time
@@ -178,17 +197,18 @@ class TwistToMotors:
         
         # Forwards/Backwards. Must use if-else pairs for fowards/backwards motion because of gamepad mapping
         if self.last_joy_message.axes[r_atc['ABS_RZ']] > 0:
-            motor_angles = self.cmd_motors_forward(self.last_joy_message.axes[r_atc['ABS_RZ']])
+            self.motor_angles = self.cmd_motors_forward(self.last_joy_message.axes[r_atc['ABS_RZ']])
         elif self.last_joy_message.axes[r_atc['ABS_Z']] > 0:
-            motor_angles = self.cmd_motors_reverse(self.last_joy_message.axes[r_atc['ABS_Z']])
+            self.motor_angles = self.cmd_motors_reverse(self.last_joy_message.axes[r_atc['ABS_Z']])
         else: # possible to have no input from the controller
-            motor_angles = (0, 0)
+            self.cmd_stop()
+            self.motor_angles = np.array([0, 0])
                 
         # For steering
         # TODO check if its minus for left turns.
         # servo_angles = self.cmd_servos_turn(self.last_joy_message.axes[r_atc['ABS_X']])
         servo_angles = (90, 90)
-        motor_cmd_msg = self.generate_motor_cmd_msg(motor_angles, servo_angles)
+        motor_cmd_msg = self.generate_motor_cmd_msg(self.motor_angles, servo_angles)
         
         return motor_cmd_msg
 
@@ -210,19 +230,19 @@ class TwistToMotors:
         return (value - source_min) * (target_max - target_min) / (source_max - source_min) + target_min
  
     def run(self):
-        rate = rospy.Rate(1000) 
+        rate = rospy.Rate(100) 
         while not rospy.is_shutdown():
         
             # TODO: Check if this is even necessary. I think it is not, and actually might just get in the way.
             # If the time between two callback messages is greater than a second
             current_time = rospy.Time.now()
             time_difference = (current_time - self.last_received_time).to_sec()
-            if time_difference > 1.0:
-                rospy.loginfo('No Joy message received. Robot has stopped. 90')
-                rospy.loginfo(f'Time since last message: {time_difference}')
-                kit.servo[0].angle = 0 
-                kit.servo[2].angle = 0
-        
+            # if time_difference > 1.0:
+            #     rospy.loginfo('No Joy message received. Robot has stopped. 90')
+            #    rospy.loginfo(f'Time since last message: {time_difference}')
+            #     kit.servo[0].angle = 0 
+            #     kit.servo[2].angle = 0
+            #    time.sleep(0.1) 
             # Move the robot    
             motor_cmd_msg = self.cmd_move()
             
