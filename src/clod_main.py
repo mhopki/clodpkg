@@ -120,9 +120,11 @@ class JoyListener:
                 self.drive_req = 0
                 #motor_pin_a.value = False
                 #motor_pin_b.value = False
-                kit.servo[0].angle = 0
-                kit.servo[2].angle = 0
+                try:
+                    kit.servo[0].angle = 0
+                    kit.servo[2].angle = 0
                 # print("FORCE-Braking NOT")
+                temporary_fix_for_remote_io_error()
 
             if self.last_joy_message != None:
                 #Front Wheel Turn Command
@@ -210,7 +212,9 @@ class JoyListener:
                 if servo_val < 0:
                     servo_val = 0
                 #print(servo_val, self.t_out, " t ", self.turning, self.t_out*1.1)
-                kit.servo[1].angle = servo_val #servo angle front
+                try:
+                    kit.servo[1].angle = servo_val #servo angle front
+                temporary_fix_for_remote_io_error()
             else:
                 servo_val = 0 #self.t_out #0
                 offset = 10
@@ -222,7 +226,9 @@ class JoyListener:
                 #servo_val = 0 #18 #hard coded straight wheel angle
                 #print(servo_val, self.t_out, " nt ", self.turning)
                 #print("front: ", servo_val)
-                kit.servo[1].angle = servo_val #servo angle front
+                try:
+                    kit.servo[1].angle = servo_val #servo angle front
+                temporary_fix_for_remote_io_error()
 
             #Rear Wheels Turning State
             if self.turning2 == True:
@@ -237,7 +243,9 @@ class JoyListener:
                     servo_val = 80
                 if servo_val < 0:
                     servo_val = 0
-                kit.servo[3].angle = servo_val #servo angle back
+                try:
+                    kit.servo[3].angle = servo_val #servo angle back
+                temporary_fix_for_remote_io_error()
             else:
                 servo_val = 0 #self.t_out2 #0
                 servo_val = (servo_val + 1) * 40 + self.offset_wb #45 + 22 #59
@@ -248,16 +256,19 @@ class JoyListener:
                 #servo_val = 0 #15 #hard coded straight wheel angle
                 #print(servo_val, self.t_out2, " nt ", self.turning2)
                 #print("rear: ", servo_val)
-                kit.servo[3].angle = servo_val #servo angle back
-
+                try:
+                    kit.servo[3].angle = servo_val #servo angle back
+                temporary_fix_for_remote_io_error()
 
             #Forward Driving State
             if self.drive_req >= 0.5 and self.drive_req < 0.75:
                 #Brake first for a short time
                 self.m_in1 = 0
                 self.m_in2 = 0
-                kit.servo[0].angle = 0
-                kit.servo[2].angle = 0
+                try:
+                    kit.servo[0].angle = 0
+                    kit.servo[2].angle = 0
+                temporary_fix_for_remote_io_error()
                 #motor_pin_a.value = False
                 #motor_pin_b.value = False
             elif self.drive_req >= 0.75 and self.drive_req < 1.0:
@@ -286,8 +297,10 @@ class JoyListener:
                         self.m_in1 -= self.m_inc
                     if (self.m_in1 < motor_val):
                         self.m_in1 = motor_val
-                kit.servo[0].angle = self.m_in1
-                kit.servo[2].angle = 0
+                try:
+                    kit.servo[0].angle = self.m_in1
+                    kit.servo[2].angle = 0
+                temporary_fix_for_remote_io_error()
                 # print("m_val1:", motor_val, self.m_in1)
                 # print("Driving Forward")
 
@@ -296,8 +309,10 @@ class JoyListener:
                 #Brake first for a short time
                 self.m_in1 = 0
                 self.m_in2 = 0
-                kit.servo[0].angle = 0
-                kit.servo[2].angle = 0
+                try:
+                    kit.servo[0].angle = 0
+                    kit.servo[2].angle = 0
+                temporary_fix_for_remote_io_error()
                 #motor_pin_a.value = False
                 #motor_pin_b.value = False
             elif self.drive_req <= -0.75 and self.drive_req > -1.0:
@@ -312,7 +327,7 @@ class JoyListener:
                 motor_val = self.m_out
                 motor_val = (motor_val) * 180
                 #print("m_val:", motor_val, self.m_out)
-                kit.servo[0].angle = 0
+                # kit.servo[0].angle = 0
                 if (self.m_in2 < motor_val):
                     if (self.m_in2 + self.m_inc >= 180):
                         self.m_in2 = 180
@@ -327,7 +342,10 @@ class JoyListener:
                         self.m_in2 -= self.m_inc
                     if (self.m_in2 < motor_val):
                         self.m_in2 = motor_val
-                kit.servo[2].angle = self.m_in2
+                try:
+                    kit.servo[0].angle = 0
+                    kit.servo[2].angle = self.m_in2
+                temporary_fix_for_remote_io_error()
                 # print("m_val2:", motor_val, self.m_in2)
                 # print("Driving Backward")
 
@@ -406,6 +424,13 @@ class JoyListener:
 
 
             rate.sleep()
+
+def temporary_fix_for_remote_io_error():
+    except OSError as e:
+        # Catch the Remote I/O error and handle it
+        if e.errno == 121:  # Errno 121 corresponds to a remote I/O error
+            rospy.logwarn("Remote I/O error encountered, retrying...")
+            time.sleep(1)  # You can add a short delay before retrying
 
 if __name__ == '__main__':
     joy_listener = JoyListener()
