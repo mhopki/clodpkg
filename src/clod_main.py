@@ -120,8 +120,14 @@ class JoyListener:
                 self.drive_req = 0
                 #motor_pin_a.value = False
                 #motor_pin_b.value = False
-                kit.servo[0].angle = 0
-                kit.servo[2].angle = 0
+                try:
+                    kit.servo[0].angle = 0
+                    kit.servo[2].angle = 0
+                except OSError as e:
+                    # Catch the Remote I/O error and handle it
+                    if e.errno == 121:  # Errno 121 corresponds to a remote I/O error
+                        rospy.logwarn("Remote I/O error encountered, retrying...")
+                        time.sleep(1)  # You can add a short delay before retrying
                 # print("FORCE-Braking NOT")
 
             if self.last_joy_message != None:
@@ -210,7 +216,15 @@ class JoyListener:
                 if servo_val < 0:
                     servo_val = 0
                 #print(servo_val, self.t_out, " t ", self.turning, self.t_out*1.1)
-                kit.servo[1].angle = servo_val #servo angle front
+                try:
+                    kit.servo[1].angle = servo_val #servo angle front
+                except OSError as e:
+                    # Catch the Remote I/O error and handle it
+                    if e.errno == 121:  # Errno 121 corresponds to a remote I/O error
+                        rospy.logwarn("Remote I/O error encountered, retrying...")
+                        time.sleep(1)  # You can add a short delay before retrying
+                # print("FORCE-Braking NOT")
+
             else:
                 servo_val = 0 #self.t_out #0
                 offset = 10
@@ -222,7 +236,15 @@ class JoyListener:
                 #servo_val = 0 #18 #hard coded straight wheel angle
                 #print(servo_val, self.t_out, " nt ", self.turning)
                 #print("front: ", servo_val)
-                kit.servo[1].angle = servo_val #servo angle front
+                try:
+                    kit.servo[1].angle = servo_val #servo angle front
+                except OSError as e:
+                    # Catch the Remote I/O error and handle it
+                    if e.errno == 121:  # Errno 121 corresponds to a remote I/O error
+                        rospy.logwarn("Remote I/O error encountered, retrying...")
+                        time.sleep(1)  # You can add a short delay before retrying
+                # print("FORCE-Braking NOT")
+
 
             #Rear Wheels Turning State
             if self.turning2 == True:
@@ -237,7 +259,15 @@ class JoyListener:
                     servo_val = 80
                 if servo_val < 0:
                     servo_val = 0
-                kit.servo[3].angle = servo_val #servo angle back
+                try:
+                    kit.servo[3].angle = servo_val #servo angle back
+                except OSError as e:
+                    # Catch the Remote I/O error and handle it
+                    if e.errno == 121:  # Errno 121 corresponds to a remote I/O error
+                        rospy.logwarn("Remote I/O error encountered, retrying...")
+                        time.sleep(1)  # You can add a short delay before retrying
+                # print("FORCE-Braking NOT")
+
             else:
                 servo_val = 0 #self.t_out2 #0
                 servo_val = (servo_val + 1) * 40 + self.offset_wb #45 + 22 #59
@@ -248,7 +278,15 @@ class JoyListener:
                 #servo_val = 0 #15 #hard coded straight wheel angle
                 #print(servo_val, self.t_out2, " nt ", self.turning2)
                 #print("rear: ", servo_val)
-                kit.servo[3].angle = servo_val #servo angle back
+                try:
+                    kit.servo[3].angle = servo_val #servo angle back
+                except OSError as e:
+                    # Catch the Remote I/O error and handle it
+                    if e.errno == 121:  # Errno 121 corresponds to a remote I/O error
+                        rospy.logwarn("Remote I/O error encountered, retrying...")
+                        time.sleep(1)  # You can add a short delay before retrying
+                # print("FORCE-Braking NOT")
+
 
 
             #Forward Driving State
@@ -256,8 +294,16 @@ class JoyListener:
                 #Brake first for a short time
                 self.m_in1 = 0
                 self.m_in2 = 0
-                kit.servo[0].angle = 0
-                kit.servo[2].angle = 0
+                try:
+                    kit.servo[0].angle = 0
+                    kit.servo[2].angle = 0
+                except OSError as e:
+                    # Catch the Remote I/O error and handle it
+                    if e.errno == 121:  # Errno 121 corresponds to a remote I/O error
+                        rospy.logwarn("Remote I/O error encountered, retrying... FIRST")
+                        time.sleep(1)  # You can add a short delay before retrying
+                # print("FORCE-Braking NOT")
+
                 #motor_pin_a.value = False
                 #motor_pin_b.value = False
             elif self.drive_req >= 0.75 and self.drive_req < 1.0:
@@ -286,8 +332,19 @@ class JoyListener:
                         self.m_in1 -= self.m_inc
                     if (self.m_in1 < motor_val):
                         self.m_in1 = motor_val
-                kit.servo[0].angle = self.m_in1
-                kit.servo[2].angle = 0
+                #kit.servo[2].angle = 0
+                try:
+                    kit.servo[2].angle = 0
+                    kit.servo[0].angle = self.m_in1
+                    #print("TRYING 1, mpow: ", self.m_in1, kit.servo[0].angle, kit.servo[2].angle)
+                except OSError as e:
+                    # Catch the Remote I/O error and handle it
+                    if e.errno == 121:  # Errno 121 corresponds to a remote I/O error
+                        rospy.logwarn("Remote I/O error encountered, retrying... SECOND")
+                        time.sleep(1)  # You can add a short delay before retrying
+            # print(kit.servo[2].angle, 'angle')
+                # print("FORCE-Braking NOT")
+
                 # print("m_val1:", motor_val, self.m_in1)
                 # print("Driving Forward")
 
@@ -296,8 +353,16 @@ class JoyListener:
                 #Brake first for a short time
                 self.m_in1 = 0
                 self.m_in2 = 0
-                kit.servo[0].angle = 0
-                kit.servo[2].angle = 0
+                try:
+                    kit.servo[0].angle = 0
+                    kit.servo[2].angle = 0
+                except OSError as e:
+                    # Catch the Remote I/O error and handle it
+                    if e.errno == 121:  # Errno 121 corresponds to a remote I/O error
+                        rospy.logwarn("Remote I/O error encountered, retrying...")
+                        time.sleep(1)  # You can add a short delay before retrying
+                # print("FORCE-Braking NOT")
+
                 #motor_pin_a.value = False
                 #motor_pin_b.value = False
             elif self.drive_req <= -0.75 and self.drive_req > -1.0:
@@ -312,7 +377,7 @@ class JoyListener:
                 motor_val = self.m_out
                 motor_val = (motor_val) * 180
                 #print("m_val:", motor_val, self.m_out)
-                kit.servo[0].angle = 0
+                #kit.servo[0].angle = 0
                 if (self.m_in2 < motor_val):
                     if (self.m_in2 + self.m_inc >= 180):
                         self.m_in2 = 180
@@ -327,7 +392,17 @@ class JoyListener:
                         self.m_in2 -= self.m_inc
                     if (self.m_in2 < motor_val):
                         self.m_in2 = motor_val
-                kit.servo[2].angle = self.m_in2
+                try:
+                    kit.servo[0].angle = 0
+                    kit.servo[2].angle = self.m_in2
+                    #print("TRYING, mpow: ", self.m_in2, kit.servo[0].angle, kit.servo[2].angle)
+                except OSError as e:
+                    # Catch the Remote I/O error and handle it
+                    if e.errno == 121:  # Errno 121 corresponds to a remote I/O error
+                        rospy.logwarn("Remote I/O error encountered, retrying...")
+                        time.sleep(1)  # You can add a short delay before retrying
+                # print("FORCE-Braking NOT")
+
                 # print("m_val2:", motor_val, self.m_in2)
                 # print("Driving Backward")
 
@@ -403,9 +478,17 @@ class JoyListener:
                         kit.servo[5].angle = proj_ang
                         self.cp_pos = proj_ang
                         #print("Pitch, ", self.cp_pos, proj_ang)
-
-
-            rate.sleep()
+            # motor_pin_a.value = True 
+            # motor_pin_b.value = True 
+            # kit.servo[0].angle = 5
+            # kit.servo[2].angle = 1
+            # kit.continuous_servo[0].throttle = 1
+            # print('what', kit.servo[0], kit.servo[2])
+            # if kit.servo[0].angle:
+            #     print('angle0', kit.servo[0].angle) 
+            # if kit.servo[2].angle:
+            #     print('angle2', kit.servo[2].angle)
+            # rate.sleep()
 
 if __name__ == '__main__':
     joy_listener = JoyListener()
