@@ -84,6 +84,12 @@ elif [[ "$my_ip" == "192.168.80.95" ]]; then
         export ROS_IP=192.168.80.95
         #export ROS_MASTER_URI=http://10.103.121.167:11311
         export ROS_MASTER_URI=http://192.168.80.171:11311
+elif [[ "$my_ip" == "10.103.64.139" ]]; then
+        # Set ROS_MASTER_URI
+        export ROS_IP=10.103.64.139
+        #export ROS_MASTER_URI=http://10.103.121.167:11311
+        export ROS_MASTER_URI=http://10.103.90.126:11311
+
 fi
 
 
