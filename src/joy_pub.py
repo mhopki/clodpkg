@@ -8,11 +8,17 @@ import inputs
 # Initialize the ROS node and publisher
 rospy.init_node('gamepad_publisher', anonymous=True)
 joy_pub = rospy.Publisher('/joy', Joy, queue_size=100)
+joy_pub_const = rospy.Publisher('/joy_c', Joy, queue_size=100)
 
 # Create a Joy message
 joy_msg = Joy()
 joy_msg.axes = [0.0] * 8
 joy_msg.buttons = [0] * 12
+
+joy_msg_const = Joy()
+joy_msg_const.axes = [0.0] * 8
+joy_msg_const.buttons = [0] * 12
+
 
 button_codes = {
 	0: "BTN_EAST",
@@ -47,6 +53,9 @@ rate = rospy.Rate(1000)
 
 # Publish the Joy message repeatedly
 while not rospy.is_shutdown():
+    print(joy_msg_const)
+    joy_pub_const.publish(joy_msg)
+
     events = inputs.get_gamepad()
     for event in events:
         # Update the Joy message based on the event
@@ -72,7 +81,11 @@ while not rospy.is_shutdown():
        			#print("Event Output: ", event.state)
 
     # Publish the Joy message
+    joy_msg.header.stamp = rospy.Time.now()
+    print("Time: ", rospy.Time.now(), " STAMP: ", joy_msg.header.stamp)
     joy_pub.publish(joy_msg)
+    joy_msg_const = joy_msg
+    joy_pub_const.publish(joy_msg_const)
     #print(joy_msg)
 
     # Sleep for a short time to avoid overwhelming the system
